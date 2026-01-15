@@ -1,10 +1,15 @@
-import { Command, Args } from "@effect/cli"
-import { Effect } from "effect"
-import { NotImplementedError } from "../../../domain/errors"
+import { Command, Args } from "@effect/cli";
+import { Effect } from "effect";
+import { NotImplementedError } from "../../../domain/errors";
 
-export const addPlaylistCommand = Command.make("add", { playlistIds: Args.text({ name: "playlistId" }).pipe(Args.repeated) }, ({ playlistIds }) =>
-  Effect.gen(function* () {
-    yield* Effect.logInfo("Add playlist not yet implemented")
-    return yield* NotImplementedError.make({ command: "musync playlist add" })
-  })
-).pipe(Command.withDescription("Track playlists"))
+export const addPlaylistCommand = Command.make(
+  "add",
+  { playlistIds: Args.text({ name: "playlistId" }).pipe(Args.repeated) },
+  ({ playlistIds }) =>
+    Effect.gen(function* () {
+      yield* Effect.logInfo("Add playlist not yet implemented");
+      return yield* NotImplementedError.make({
+        command: "musync playlist add",
+      });
+    }),
+).pipe(Command.withDescription("Track playlists"));

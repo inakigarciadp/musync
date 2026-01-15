@@ -1,8 +1,8 @@
-import { Schema } from "effect"
+import { Schema } from "effect";
 
 export class NotImplementedError extends Schema.TaggedError<NotImplementedError>()(
   "NotImplementedError",
   {
-    command: Schema.String
-  }
+    command: Schema.String,
+  },
 ) {}
