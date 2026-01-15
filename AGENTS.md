@@ -113,4 +113,5 @@ src/
 
 ## Implementation status
 
-- CLI command structure with all subcommands without implementation.
+- `auth login` - OAuth2 PKCE flow with Youtube API v3.
+- All other commands - stubs
