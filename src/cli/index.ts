@@ -1,26 +1,24 @@
-import { Command, Args, Options } from "@effect/cli";
-import { Effect } from "effect";
-import { NotImplementedError } from "../domain/errors";
-import { initCommand } from "./commands/init";
-import { syncCommand, syncPlaylistCommand } from "./commands/sync";
-import { statusCommand } from "./commands/status";
-import { playlistsCommand } from "./commands/playlists";
-import { tracksCommand } from "./commands/tracks";
+import { Command } from "@effect/cli";
 import { loginCommand } from "./commands/auth/login";
 import { logoutCommand } from "./commands/auth/logout";
 import { authStatusCommand } from "./commands/auth/status";
+import { configResetCommand } from "./commands/config/reset";
 import { configSetCommand } from "./commands/config/set";
 import { configShowCommand } from "./commands/config/show";
-import { configResetCommand } from "./commands/config/reset";
-import { addPlaylistCommand } from "./commands/playlist/add";
-import { removePlaylistCommand } from "./commands/playlist/remove";
-import { listPlaylistsCommand } from "./commands/playlist/list";
-import { verifyCommand } from "./commands/maintenance/verify";
+import { initCommand } from "./commands/init";
 import { cleanCommand } from "./commands/maintenance/clean";
-import { orphansCommand } from "./commands/maintenance/orphans";
 import { duplicatesCommand } from "./commands/maintenance/duplicates";
-import { validateCommand } from "./commands/maintenance/validate";
+import { orphansCommand } from "./commands/maintenance/orphans";
 import { refetchCommand } from "./commands/maintenance/refetch";
+import { validateCommand } from "./commands/maintenance/validate";
+import { verifyCommand } from "./commands/maintenance/verify";
+import { addPlaylistCommand } from "./commands/playlist/add";
+import { listPlaylistsCommand } from "./commands/playlist/list";
+import { removePlaylistCommand } from "./commands/playlist/remove";
+import { playlistsCommand } from "./commands/playlists";
+import { statusCommand } from "./commands/status";
+import { syncCommand, syncPlaylistCommand } from "./commands/sync";
+import { tracksCommand } from "./commands/tracks";
 
 const authCommand = Command.make("auth", {}).pipe(
   Command.withSubcommands([loginCommand, logoutCommand, authStatusCommand]),
