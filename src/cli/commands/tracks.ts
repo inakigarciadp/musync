@@ -1,0 +1,33 @@
+import { Command, Args, Options } from "@effect/cli"
+import { Effect } from "effect"
+import { NotImplementedError } from "../../domain/errors"
+
+const downloadedOption = Options.boolean("downloaded").pipe(
+  Options.withDescription("Show only downloaded tracks")
+)
+
+const missingOption = Options.boolean("missing").pipe(
+  Options.withDescription("Show only missing tracks")
+)
+
+const limitOption = Options.integer("limit").pipe(
+  Options.withDescription("Limit number of results"),
+  Options.optional
+)
+
+const formatOption = Options.choice("format", ["json", "table", "compact"]).pipe(
+  Options.withDescription("Output format"),
+  Options.withDefault("table")
+)
+
+export const tracksCommand = Command.make(
+  "tracks",
+  { playlistId: Args.text({ name: "playlistId" }), downloaded: downloadedOption, missing: missingOption, limit: limitOption, format: formatOption },
+  ({ playlistId, downloaded, missing, limit, format }) =>
+    Effect.gen(function* () {
+      yield* Effect.logInfo("Tracks listing not yet implemented")
+      return yield* NotImplementedError.make({
+        command: "musync tracks"
+      })
+    })
+).pipe(Command.withDescription("Show tracks in playlist"))
