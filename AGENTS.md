@@ -115,4 +115,5 @@ src/
 
 - `auth login` - OAuth2 PKCE flow with Youtube API v3.
 - `auth logout` - Removes stored authentication tokens.
+- `auth status` - Shows authentication state and token expiry.
 - All other commands - stubs
