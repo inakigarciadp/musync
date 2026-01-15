@@ -108,3 +108,7 @@ src/
 │   ├── app.ts                     # Main app layer composition
 │   └── http.ts                    # HTTP client layers composition
 ```
+
+## Implementation status
+
+- CLI command structure with all subcommands without implementation.
