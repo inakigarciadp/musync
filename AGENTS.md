@@ -114,4 +114,5 @@ src/
 ## Implementation status
 
 - `auth login` - OAuth2 PKCE flow with Youtube API v3.
+- `auth logout` - Removes stored authentication tokens.
 - All other commands - stubs
