@@ -4,6 +4,8 @@ There is no build command in this project. Just run `bun index.ts <command>`.
 
 If you need to learn about the Youtube API, search for links in the official [Youtube Data API v3](https://developers.google.com/youtube/v3/docs) documentation.
 
+Use kebab-case for TypeScript files.
+
 # Project musync
 
 This project uses bun for everything.
