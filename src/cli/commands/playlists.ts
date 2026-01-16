@@ -3,6 +3,7 @@ import { Effect } from "effect";
 import { NotImplementedError } from "../../domain/errors";
 
 const trackedOption = Options.boolean("tracked").pipe(
+  Options.withAlias("t"),
   Options.withDescription("Show only tracked playlists"),
 );
 
@@ -10,7 +11,11 @@ const formatOption = Options.choice("format", [
   "json",
   "table",
   "compact",
-]).pipe(Options.withDescription("Output format"), Options.withDefault("table"));
+]).pipe(
+  Options.withAlias("f"),
+  Options.withDescription("Output format"),
+  Options.withDefault("table"),
+);
 
 export const playlistsCommand = Command.make(
   "playlists",

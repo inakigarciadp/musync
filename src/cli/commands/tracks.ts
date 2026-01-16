@@ -3,10 +3,12 @@ import { Effect } from "effect";
 import { NotImplementedError } from "../../domain/errors";
 
 const downloadedOption = Options.boolean("downloaded").pipe(
+  Options.withAlias("d"),
   Options.withDescription("Show only downloaded tracks"),
 );
 
 const missingOption = Options.boolean("missing").pipe(
+  Options.withAlias("m"),
   Options.withDescription("Show only missing tracks"),
 );
 
@@ -19,7 +21,11 @@ const formatOption = Options.choice("format", [
   "json",
   "table",
   "compact",
-]).pipe(Options.withDescription("Output format"), Options.withDefault("table"));
+]).pipe(
+  Options.withAlias("f"),
+  Options.withDescription("Output format"),
+  Options.withDefault("table"),
+);
 
 export const tracksCommand = Command.make(
   "tracks",
