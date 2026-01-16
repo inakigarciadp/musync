@@ -1,4 +1,4 @@
-import { Deferred, Effect, Queue } from "effect";
+import { Effect, Queue } from "effect";
 import {
   AuthTimeoutError,
   ServerStartError,

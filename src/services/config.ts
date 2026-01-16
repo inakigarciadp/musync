@@ -1,4 +1,4 @@
-import { Config, Context, Effect, Layer, type Redacted, Schema } from "effect";
+import { Context, Effect, Layer, type Redacted, Schema } from "effect";
 import { getAppDataDir } from "../infrastructure/paths/xdg";
 
 const GoogleClientId = Schema.String.pipe(
