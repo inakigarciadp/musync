@@ -29,7 +29,10 @@ import { ConfigService } from "./config";
 export class AuthService extends Context.Tag("@app/AuthService")<
   AuthService,
   {
-    readonly generatePKCEPair: Effect.Effect<PKCEPair, PKCEGenerationError>;
+    readonly generatePKCEPair: () => Effect.Effect<
+      PKCEPair,
+      PKCEGenerationError
+    >;
     readonly buildAuthorizationUrl: (params: {
       codeChallenge: string;
       state: string;
@@ -49,11 +52,11 @@ export class AuthService extends Context.Tag("@app/AuthService")<
     readonly storeTokens: (
       tokens: StoredTokens,
     ) => Effect.Effect<void, TokenStorageError | ParseError>;
-    readonly loadTokens: Effect.Effect<
+    readonly loadTokens: () => Effect.Effect<
       StoredTokens | null,
       TokenStorageError | ParseError
     >;
-    readonly clearTokens: Effect.Effect<void, TokenStorageError>;
+    readonly clearTokens: () => Effect.Effect<void, TokenStorageError>;
   }
 >() {
   static readonly layer = Layer.effect(
@@ -63,40 +66,44 @@ export class AuthService extends Context.Tag("@app/AuthService")<
       const http = yield* HttpClient.HttpClient;
       const tokenStoragePath = config.tokenStoragePath;
 
-      const generatePKCEPair = Effect.gen(function* () {
-        const codeVerifier = yield* generateCodeVerifier;
-        const codeChallenge = yield* generateCodeChallenge(codeVerifier);
-        const state = yield* generateState;
-        return PKCEPair.make({ codeVerifier, codeChallenge, state });
-      });
+      const generatePKCEPair = Effect.fn("AuthService.generatePKCEPair")(
+        function* () {
+          const codeVerifier = yield* generateCodeVerifier;
+          const codeChallenge = yield* generateCodeChallenge(codeVerifier);
+          const state = yield* generateState;
+          return PKCEPair.make({ codeVerifier, codeChallenge, state });
+        },
+      );
 
-      const buildAuthorizationUrl = (params: {
-        codeChallenge: string;
-        state: string;
-        redirectUri: string;
-      }) =>
-        Effect.gen(function* () {
-          const clientId = config.clientId;
-          const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-          url.searchParams.set("client_id", clientId);
-          url.searchParams.set("redirect_uri", params.redirectUri);
-          url.searchParams.set(
-            "scope",
-            "https://www.googleapis.com/auth/youtube.readonly",
-          );
-          url.searchParams.set("response_type", "code");
-          url.searchParams.set("access_type", "offline");
-          url.searchParams.set("code_challenge", params.codeChallenge);
-          url.searchParams.set("code_challenge_method", "S256");
-          url.searchParams.set("state", params.state);
-          return url.toString();
-        });
+      const buildAuthorizationUrl = Effect.fn(
+        "AuthService.buildAuthorizationUrl",
+      )(
+        (params: {
+          codeChallenge: string;
+          state: string;
+          redirectUri: string;
+        }) =>
+          Effect.gen(function* () {
+            const clientId = config.clientId;
+            const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+            url.searchParams.set("client_id", clientId);
+            url.searchParams.set("redirect_uri", params.redirectUri);
+            url.searchParams.set(
+              "scope",
+              "https://www.googleapis.com/auth/youtube.readonly",
+            );
+            url.searchParams.set("response_type", "code");
+            url.searchParams.set("access_type", "offline");
+            url.searchParams.set("code_challenge", params.codeChallenge);
+            url.searchParams.set("code_challenge_method", "S256");
+            url.searchParams.set("state", params.state);
+            return url.toString();
+          }),
+      );
 
-      const exchangeCodeForTokens = (
-        code: string,
-        codeVerifier: string,
-        redirectUri: string,
-      ) =>
+      const exchangeCodeForTokens = Effect.fn(
+        "AuthService.exchangeCodeForTokens",
+      )((code: string, codeVerifier: string, redirectUri: string) =>
         Effect.gen(function* () {
           const clientId = config.clientId;
           const clientSecret = config.clientSecret;
@@ -117,31 +124,34 @@ export class AuthService extends Context.Tag("@app/AuthService")<
           return yield* HttpClientResponse.schemaBodyJson(TokenResponse)(
             response,
           );
-        });
+        }),
+      );
 
-      const storeTokens = (tokens: StoredTokens) =>
-        Effect.gen(function* () {
-          const fs = (yield* Effect.tryPromise({
-            try: () => import("node:fs/promises"),
-            catch: (error) =>
-              TokenStorageError.make({
-                reason: `Failed to import fs/promises: ${error}`,
-              }),
-          })) as typeof import("node:fs/promises");
+      const storeTokens = Effect.fn("AuthService.storeTokens")(
+        (tokens: StoredTokens) =>
+          Effect.gen(function* () {
+            const fs = (yield* Effect.tryPromise({
+              try: () => import("node:fs/promises"),
+              catch: (error) =>
+                TokenStorageError.make({
+                  reason: `Failed to import fs/promises: ${error}`,
+                }),
+            })) as typeof import("node:fs/promises");
 
-          const json = yield* Schema.encode(StoredTokensToJson)(tokens);
+            const json = yield* Schema.encode(StoredTokensToJson)(tokens);
 
-          yield* Effect.tryPromise({
-            try: () =>
-              fs.writeFile(tokenStoragePath, json, {
-                mode: 0o600,
-              }),
-            catch: (error) =>
-              TokenStorageError.make({
-                reason: `Failed to store tokens: ${error}`,
-              }),
-          });
-        });
+            yield* Effect.tryPromise({
+              try: () =>
+                fs.writeFile(tokenStoragePath, json, {
+                  mode: 0o600,
+                }),
+              catch: (error) =>
+                TokenStorageError.make({
+                  reason: `Failed to store tokens: ${error}`,
+                }),
+            });
+          }),
+      );
 
       const loadTokens = Effect.gen(function* () {
         const fs = (yield* Effect.tryPromise({
@@ -197,8 +207,8 @@ export class AuthService extends Context.Tag("@app/AuthService")<
         buildAuthorizationUrl,
         exchangeCodeForTokens,
         storeTokens,
-        loadTokens,
-        clearTokens,
+        loadTokens: () => loadTokens,
+        clearTokens: () => clearTokens,
       });
     }),
   );
