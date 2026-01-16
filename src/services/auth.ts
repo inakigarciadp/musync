@@ -149,7 +149,13 @@ export class AuthService extends Context.Tag("@app/AuthService")<
             }),
         });
 
-        const data = JSON.parse(content);
+        const data = yield* Effect.try({
+          try: () => JSON.parse(content),
+          catch: (error) =>
+            TokenStorageError.make({
+              reason: `Failed to parse token JSON: ${error}`,
+            }),
+        });
         return StoredTokens.make({
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
