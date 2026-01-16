@@ -28,9 +28,9 @@ export class PageInfo extends Schema.Class<PageInfo>("PageInfo")({
 export class PlaylistListResponse extends Schema.Class<PlaylistListResponse>(
   "PlaylistListResponse",
 )({
-  kind: Schema.String,
-  etag: Schema.String,
-  pageInfo: PageInfo,
+  kind: Schema.optional(Schema.String),
+  etag: Schema.optional(Schema.String),
+  pageInfo: Schema.optional(PageInfo),
   items: Schema.Array(Playlist),
   nextPageToken: Schema.optional(Schema.String),
 }) {}
