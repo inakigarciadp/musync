@@ -9,19 +9,21 @@ const base64UrlEncode = (buffer: Uint8Array): string => {
   return base64;
 };
 
-export const generateCodeVerifier = Effect.gen(function* () {
-  const bytes = yield* Effect.try({
-    try: () => crypto.getRandomValues(new Uint8Array(32)),
-    catch: (error) =>
-      PKCEGenerationError.make({
-        reason: `Failed to generate random bytes: ${error}`,
-      }),
-  });
-  return base64UrlEncode(bytes);
-});
+export const generateCodeVerifier = Effect.fn("generateCodeVerifier")(
+  function* () {
+    const bytes = yield* Effect.try({
+      try: () => crypto.getRandomValues(new Uint8Array(32)),
+      catch: (error) =>
+        PKCEGenerationError.make({
+          reason: `Failed to generate random bytes: ${error}`,
+        }),
+    });
+    return base64UrlEncode(bytes);
+  },
+);
 
-export const generateCodeChallenge = (verifier: string) =>
-  Effect.gen(function* () {
+export const generateCodeChallenge = Effect.fn("generateCodeChallenge")(
+  function* (verifier: string) {
     const encoder = new TextEncoder();
     const data = encoder.encode(verifier);
     const hash = yield* Effect.tryPromise({
@@ -32,8 +34,9 @@ export const generateCodeChallenge = (verifier: string) =>
         }),
     });
     return base64UrlEncode(new Uint8Array(hash));
-  });
+  },
+);
 
-export const generateState = Effect.gen(function* () {
+export const generateState = Effect.fn("generateState")(function* () {
   return crypto.randomUUID();
 });

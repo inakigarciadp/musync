@@ -1,20 +1,26 @@
-import { promises as fs } from "node:fs";
-import { Effect } from "effect";
+import { Config, Effect } from "effect";
+import fs from "fs/promises";
 import { FileSystemError } from "../../domain/errors/auth-errors";
 
-export const getDataHome = Effect.sync(() => {
-  return process.env.XDG_DATA_HOME ?? `${process.env.HOME}/.local/share`;
+export const getDataHome = Effect.fn("getDataHome")(function* () {
+  const xdgDataHome = yield* Config.string("XDG_DATA_HOME").pipe(
+    Config.orElse(() => Config.succeed(undefined)),
+  );
+  const home = yield* Config.string("HOME").pipe(
+    Config.orElse(() => Config.succeed("~")),
+  );
+
+  return xdgDataHome ?? `${home}/.local/share`;
 });
 
-export const getAppDataDir = getDataHome.pipe(
-  Effect.map((dataHome) => `${dataHome}/musync`),
-  Effect.flatMap((dir) =>
-    Effect.tryPromise({
-      try: () => fs.mkdir(dir, { recursive: true }).then(() => dir),
-      catch: (error) =>
-        FileSystemError.make({
-          reason: `Failed to create app data directory: ${error}`,
-        }),
-    }),
-  ),
-);
+export const getAppDataDir = Effect.fn("getAppDataDir")(function* () {
+  const dataHome = yield* getDataHome();
+  const dir = `${dataHome}/musync`;
+  return yield* Effect.tryPromise({
+    try: () => fs.mkdir(dir, { recursive: true }).then(() => dir),
+    catch: (error) =>
+      FileSystemError.make({
+        reason: `Failed to create app data directory: ${error}`,
+      }),
+  });
+});
