@@ -17,7 +17,7 @@ import { listPlaylistsCommand } from "./commands/playlist/list";
 import { removePlaylistCommand } from "./commands/playlist/remove";
 import { playlistsCommand } from "./commands/playlists";
 import { statusCommand } from "./commands/status";
-import { syncCommand, syncPlaylistCommand } from "./commands/sync";
+import { syncCommand } from "./commands/sync";
 import { tracksCommand } from "./commands/tracks";
 
 const authCommand = Command.make("auth", {}).pipe(
@@ -56,7 +56,6 @@ const musyncCommand = Command.make("musync", {}).pipe(
   Command.withSubcommands([
     initCommand,
     syncCommand,
-    syncPlaylistCommand,
     statusCommand,
     playlistsCommand,
     tracksCommand,
