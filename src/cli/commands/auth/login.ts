@@ -1,6 +1,6 @@
 import { Command } from "@effect/cli";
 import { Console, Effect, Queue } from "effect";
-import { StoredTokens } from "../../../domain/models/Auth";
+import { StoredTokens } from "../../../domain/models/auth";
 import { openBrowser } from "../../../infrastructure/oauth/browser";
 import {
   startCallbackServer,
