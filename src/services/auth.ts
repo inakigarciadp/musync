@@ -31,7 +31,7 @@ export class AuthService extends Context.Tag("@app/AuthService")<
   {
     readonly generatePKCEPair: () => Effect.Effect<
       PKCEPair,
-      PKCEGenerationError
+      PKCEGenerationError | ParseError
     >;
     readonly buildAuthorizationUrl: (params: {
       codeChallenge: string;
@@ -68,10 +68,14 @@ export class AuthService extends Context.Tag("@app/AuthService")<
 
       const generatePKCEPair = Effect.fn("AuthService.generatePKCEPair")(
         function* () {
-          const codeVerifier = yield* generateCodeVerifier;
+          const codeVerifier = yield* generateCodeVerifier();
           const codeChallenge = yield* generateCodeChallenge(codeVerifier);
-          const state = yield* generateState;
-          return PKCEPair.make({ codeVerifier, codeChallenge, state });
+          const state = yield* generateState();
+          return PKCEPair.make({
+            codeVerifier,
+            codeChallenge,
+            state,
+          });
         },
       );
 
