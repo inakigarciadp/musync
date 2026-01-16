@@ -1,6 +1,7 @@
 import { Args, Command, Options } from "@effect/cli";
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { NotImplementedError } from "../../domain/errors";
+import { PlaylistId } from "../../domain/models/Playlist";
 
 const downloadedOption = Options.boolean("downloaded").pipe(
   Options.withAlias("d"),
@@ -30,9 +31,9 @@ const formatOption = Options.choice("format", [
 export const tracksCommand = Command.make(
   "tracks",
   {
-    playlistId: Args.text({ name: "playlistId" }).pipe(
-      Args.withDescription("YouTube playlist ID"),
-    ),
+    playlistId: Args.text({ name: "playlistId" })
+      .pipe(Args.withSchema(PlaylistId))
+      .pipe(Args.withDescription("YouTube playlist ID")),
     downloaded: downloadedOption,
     missing: missingOption,
     limit: limitOption,
