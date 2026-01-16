@@ -106,59 +106,55 @@ export class AuthService extends Context.Tag("@app/AuthService")<
 
       const exchangeCodeForTokens = Effect.fn(
         "AuthService.exchangeCodeForTokens",
-      )((code: string, codeVerifier: string, redirectUri: string) =>
-        Effect.gen(function* () {
-          const clientId = config.clientId;
-          const clientSecret = config.clientSecret;
+      )(function* (code: string, codeVerifier: string, redirectUri: string) {
+        const clientId = config.clientId;
+        const clientSecret = config.clientSecret;
 
-          const response = yield* http.pipe(HttpClient.filterStatusOk).execute(
-            HttpClientRequest.post("https://oauth2.googleapis.com/token").pipe(
-              HttpClientRequest.bodyUrlParams({
-                client_id: clientId,
-                client_secret: Redacted.value(clientSecret),
-                code,
-                code_verifier: codeVerifier,
-                grant_type: "authorization_code",
-                redirect_uri: redirectUri,
-              }),
-            ),
-          );
+        const response = yield* http.pipe(HttpClient.filterStatusOk).execute(
+          HttpClientRequest.post("https://oauth2.googleapis.com/token").pipe(
+            HttpClientRequest.bodyUrlParams({
+              client_id: clientId,
+              client_secret: Redacted.value(clientSecret),
+              code,
+              code_verifier: codeVerifier,
+              grant_type: "authorization_code",
+              redirect_uri: redirectUri,
+            }),
+          ),
+        );
 
-          return yield* HttpClientResponse.schemaBodyJson(TokenResponse)(
-            response,
-          );
-        }),
-      );
+        return yield* HttpClientResponse.schemaBodyJson(TokenResponse)(
+          response,
+        );
+      });
 
-      const storeTokens = Effect.fn("AuthService.storeTokens")(
-        (tokens: StoredTokens) =>
-          Effect.gen(function* () {
-            const json = yield* Schema.encode(StoredTokensFromJson)(tokens);
+      const storeTokens = Effect.fn("AuthService.storeTokens")(function* (
+        tokens: StoredTokens,
+      ) {
+        const json = yield* Schema.encode(StoredTokensFromJson)(tokens);
 
-            yield* Effect.tryPromise({
-              try: () =>
-                fs.writeFile(tokenStoragePath, json, {
-                  mode: 0o600,
-                }),
-              catch: (error) =>
-                TokenStorageError.make({
-                  reason: `Failed to store tokens: ${error}`,
-                }),
-            });
-          }),
-      );
-
-      const loadTokens = Effect.gen(function* () {
-        const content = yield* Effect.tryPromise({
-          try: () => fs.readFile(tokenStoragePath, "utf-8"),
+        yield* Effect.tryPromise({
+          try: () =>
+            fs.writeFile(tokenStoragePath, json, {
+              mode: 0o600,
+            }),
           catch: (error) =>
             TokenStorageError.make({
-              reason: `Failed to read tokens: ${error}`,
+              reason: `Failed to store tokens: ${error}`,
             }),
         });
+      });
 
-        return yield* Schema.decodeUnknown(StoredTokensFromJson)(content);
+      const loadTokens = Effect.tryPromise({
+        try: () => fs.readFile(tokenStoragePath, "utf-8"),
+        catch: (error) =>
+          TokenStorageError.make({
+            reason: `Failed to read tokens: ${error}`,
+          }),
       }).pipe(
+        Effect.flatMap((content) =>
+          Schema.decodeUnknown(StoredTokensFromJson)(content),
+        ),
         Effect.catchTag("TokenStorageError", (error) => {
           if (error.reason.includes("ENOENT")) {
             return Effect.succeed(null);
@@ -167,18 +163,19 @@ export class AuthService extends Context.Tag("@app/AuthService")<
         }),
       );
 
-      const clearTokens = Effect.gen(function* () {
-        yield* Effect.tryPromise({
-          try: () => fs.unlink(tokenStoragePath),
-          catch: (error) =>
-            TokenStorageError.make({
-              reason: `Failed to delete tokens: ${error}`,
-            }),
-        });
+      const clearTokens = Effect.tryPromise({
+        try: () => fs.unlink(tokenStoragePath),
+        catch: (error) =>
+          TokenStorageError.make({
+            reason: `Failed to delete tokens: ${error}`,
+          }),
       }).pipe(
-        Effect.catchTag("TokenStorageError", (error) =>
-          error.reason.includes("ENOENT") ? Effect.void : Effect.fail(error),
-        ),
+        Effect.catchTag("TokenStorageError", (error) => {
+          if (error.reason.includes("ENOENT")) {
+            return Effect.void;
+          }
+          return Effect.fail(error);
+        }),
       );
 
       return AuthService.of({
