@@ -12,7 +12,7 @@ import {
   type PKCEGenerationError,
   type TokenExchangeError,
   TokenStorageError,
-} from "../domain/errors/auth-errors";
+} from "../domain/errors/auth";
 import {
   PKCEPair,
   type StoredTokens,

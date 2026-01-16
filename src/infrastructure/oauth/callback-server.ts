@@ -2,7 +2,7 @@ import { Effect, Queue } from "effect";
 import {
   AuthTimeoutError,
   ServerStartError,
-} from "../../domain/errors/auth-errors";
+} from "../../domain/errors/auth";
 
 export type CallbackServer = {
   port: number | undefined;
