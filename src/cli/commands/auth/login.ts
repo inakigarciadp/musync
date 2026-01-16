@@ -1,5 +1,6 @@
 import { Command } from "@effect/cli";
 import { Console, Effect, Queue } from "effect";
+import { StoredTokens } from "../../../domain/models/Auth";
 import { openBrowser } from "../../../infrastructure/oauth/browser";
 import {
   startCallbackServer,
@@ -14,15 +15,11 @@ export const loginCommand = Command.make("login", {}, () =>
 
     const auth = yield* AuthService;
 
-    const pkce = yield* auth.generatePKCEPair;
+    const pkce = yield* auth.generatePKCEPair();
 
     const queue = yield* Queue.unbounded<string>();
 
-    const { server, port } = yield* startCallbackServer(queue).pipe(
-      Effect.catchTag("ServerStartError", (error) =>
-        Effect.die(`Failed to start callback server: ${error}`),
-      ),
-    );
+    const { server, port } = yield* startCallbackServer(queue);
 
     const redirectUri = `http://localhost:${port}/callback`;
 
@@ -36,34 +33,20 @@ export const loginCommand = Command.make("login", {}, () =>
 
     yield* Console.log("Opening browser for authorization...");
 
-    const browserResult = yield* openBrowser(authUrl).pipe(
-      Effect.catchTag("BrowserOpenError", (error) =>
+    yield* openBrowser(authUrl).pipe(
+      Effect.catchTag("BrowserOpenError", (_error) =>
         Effect.gen(function* () {
           yield* Console.warn("Could not open browser automatically.");
           yield* Console.log(`Please visit this URL: ${authUrl}`);
-          return error;
         }),
       ),
-      Effect.orElse(() => Effect.succeed(undefined)),
     );
-
-    if (browserResult) {
-      yield* Console.warn("Browser open failed, but continuing...");
-    } else {
-      yield* Console.log(
-        "Browser opened. Complete authorization in your browser.",
-      );
-    }
 
     yield* Console.log(
       "Waiting for authorization callback (timeout: 2 minutes)...",
     );
 
-    const code = yield* waitForAuthCode(queue, 120000).pipe(
-      Effect.catchTag("AuthTimeoutError", (error) =>
-        Effect.die(`Authorization timed out after ${error.timeoutMs}ms`),
-      ),
-    );
+    const code = yield* waitForAuthCode(queue, 120000);
 
     yield* Console.log("Authorization code received. Exchanging for tokens...");
 
@@ -75,16 +58,17 @@ export const loginCommand = Command.make("login", {}, () =>
 
     const expiresAt = new Date(Date.now() + tokenResponse.expires_in * 1000);
 
-    const storedTokens = yield* auth.storeTokens({
-      accessToken: tokenResponse.access_token,
-      refreshToken: tokenResponse.refresh_token,
-      expiresAt,
-    });
+    const storedTokens = yield* auth.storeTokens(
+      StoredTokens.make({
+        accessToken: tokenResponse.access_token,
+        refreshToken: tokenResponse.refresh_token,
+        expiresAt,
+      }),
+    );
 
     yield* Console.log("Authentication successful! Tokens stored.");
 
     yield* stopCallbackServer(server);
-
     return storedTokens;
   }),
 ).pipe(

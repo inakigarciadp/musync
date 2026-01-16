@@ -1,12 +1,15 @@
 import { Args, Command, Options } from "@effect/cli";
 import { Effect } from "effect";
 import { NotImplementedError } from "../../domain/errors";
+import { PlaylistId } from "../../domain/models/Playlist";
 
 const downloadedOption = Options.boolean("downloaded").pipe(
+  Options.withAlias("d"),
   Options.withDescription("Show only downloaded tracks"),
 );
 
 const missingOption = Options.boolean("missing").pipe(
+  Options.withAlias("m"),
   Options.withDescription("Show only missing tracks"),
 );
 
@@ -19,12 +22,19 @@ const formatOption = Options.choice("format", [
   "json",
   "table",
   "compact",
-]).pipe(Options.withDescription("Output format"), Options.withDefault("table"));
+]).pipe(
+  Options.withAlias("f"),
+  Options.withDescription("Output format"),
+  Options.withDefault("table"),
+);
 
 export const tracksCommand = Command.make(
   "tracks",
   {
-    playlistId: Args.text({ name: "playlistId" }),
+    playlistId: Args.text({ name: "playlistId" }).pipe(
+      Args.withSchema(PlaylistId),
+      Args.withDescription("YouTube playlist ID"),
+    ),
     downloaded: downloadedOption,
     missing: missingOption,
     limit: limitOption,
