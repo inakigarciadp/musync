@@ -12,7 +12,13 @@ import {
   type TokenExchangeError,
   TokenStorageError,
 } from "../domain/errors/auth-errors";
-import { PKCEPair, StoredTokens, TokenResponse } from "../domain/models/Auth";
+import {
+  PKCEPair,
+  StoredTokens,
+  StoredTokensFromJson,
+  StoredTokensToJson,
+  TokenResponse,
+} from "../domain/models/Auth";
 import {
   generateCodeChallenge,
   generateCodeVerifier,
@@ -52,7 +58,7 @@ export class AuthService extends Context.Tag("@app/AuthService")<
     Effect.gen(function* () {
       const config = yield* ConfigService;
       const http = yield* HttpClient.HttpClient;
-      const tokenStoragePath = yield* config.getTokenStoragePath;
+      const tokenStoragePath = config.tokenStoragePath;
 
       const generatePKCEPair = Effect.gen(function* () {
         const codeVerifier = yield* generateCodeVerifier;
@@ -67,7 +73,7 @@ export class AuthService extends Context.Tag("@app/AuthService")<
         redirectUri: string;
       }) =>
         Effect.gen(function* () {
-          const clientId = yield* config.getClientId;
+          const clientId = config.clientId;
           const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
           url.searchParams.set("client_id", clientId);
           url.searchParams.set("redirect_uri", params.redirectUri);
@@ -89,8 +95,8 @@ export class AuthService extends Context.Tag("@app/AuthService")<
         redirectUri: string,
       ) =>
         Effect.gen(function* () {
-          const clientId = yield* config.getClientId;
-          const clientSecret = yield* config.getClientSecret;
+          const clientId = config.clientId;
+          const clientSecret = config.clientSecret;
 
           const response = yield* http.pipe(HttpClient.filterStatusOk).execute(
             HttpClientRequest.post("https://oauth2.googleapis.com/token").pipe(
