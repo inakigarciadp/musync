@@ -21,6 +21,9 @@ export const authStatusCommand = Command.make("status", {}, () =>
       } else {
         yield* Console.log("✓ Authenticated");
         yield* Console.log(
+          `Access token expires at: ${tokens.expiresAt.toLocaleString()}`,
+        );
+        yield* Console.log(
           `Access token expires in: ${tokens.timeUntilExpiryString}`,
         );
       }
