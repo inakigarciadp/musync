@@ -4,7 +4,11 @@ import { NotImplementedError } from "../../../domain/errors";
 
 export const removePlaylistCommand = Command.make(
   "remove",
-  { playlistId: Args.text({ name: "playlistId" }) },
+  {
+    playlistId: Args.text({ name: "playlistId" }).pipe(
+      Args.withDescription("YouTube playlist ID to untrack"),
+    ),
+  },
   ({ playlistId }) =>
     Effect.gen(function* () {
       yield* Effect.logInfo("Remove playlist not yet implemented");

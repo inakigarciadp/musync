@@ -4,7 +4,11 @@ import { NotImplementedError } from "../../../domain/errors";
 
 export const validateCommand = Command.make(
   "validate",
-  { playlistId: Args.text({ name: "playlistId" }) },
+  {
+    playlistId: Args.text({ name: "playlistId" }).pipe(
+      Args.withDescription("YouTube playlist ID to validate"),
+    ),
+  },
   ({ playlistId }) =>
     Effect.gen(function* () {
       yield* Effect.logInfo("Validate not yet implemented");

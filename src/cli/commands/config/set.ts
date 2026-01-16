@@ -4,7 +4,14 @@ import { NotImplementedError } from "../../../domain/errors";
 
 export const configSetCommand = Command.make(
   "set",
-  { key: Args.text({ name: "key" }), value: Args.text({ name: "value" }) },
+  {
+    key: Args.text({ name: "key" }).pipe(
+      Args.withDescription("Configuration key to set"),
+    ),
+    value: Args.text({ name: "value" }).pipe(
+      Args.withDescription("Value to set"),
+    ),
+  },
   ({ key, value }) =>
     Effect.gen(function* () {
       yield* Effect.logInfo("Config set not yet implemented");
