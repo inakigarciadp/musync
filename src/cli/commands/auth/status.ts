@@ -14,10 +14,11 @@ export const authStatusCommand = Command.make("status", {}, () =>
       );
     } else {
       if (tokens.isExpired) {
-        yield* Console.log("✗ Not authenticated");
+        yield* Console.log("✗ Token expired");
         yield* Console.log(
-          "Run 'musync auth login' to authenticate with YouTube",
+          `Access token expired at: ${tokens.expiresAt.toLocaleString()}`,
         );
+        yield* Console.log("Access token expired in: Expired");
       } else {
         yield* Console.log("✓ Authenticated");
         yield* Console.log(
