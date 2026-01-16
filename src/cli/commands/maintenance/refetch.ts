@@ -6,9 +6,10 @@ import { PlaylistId } from "../../../domain/models/Playlist";
 export const refetchCommand = Command.make(
   "refetch",
   {
-    playlistId: Args.text({ name: "playlistId" })
-      .pipe(Args.withSchema(PlaylistId))
-      .pipe(Args.withDescription("YouTube playlist ID to refetch")),
+    playlistId: Args.text({ name: "playlistId" }).pipe(
+      Args.withSchema(PlaylistId),
+      Args.withDescription("YouTube playlist ID to refetch"),
+    ),
   },
   ({ playlistId }) =>
     Effect.gen(function* () {

@@ -6,9 +6,10 @@ import { PlaylistId } from "../../../domain/models/Playlist";
 export const validateCommand = Command.make(
   "validate",
   {
-    playlistId: Args.text({ name: "playlistId" })
-      .pipe(Args.withSchema(PlaylistId))
-      .pipe(Args.withDescription("YouTube playlist ID to validate")),
+    playlistId: Args.text({ name: "playlistId" }).pipe(
+      Args.withSchema(PlaylistId),
+      Args.withDescription("YouTube playlist ID to validate"),
+    ),
   },
   ({ playlistId }) =>
     Effect.gen(function* () {
