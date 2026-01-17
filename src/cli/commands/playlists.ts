@@ -1,11 +1,12 @@
 import { Command, Options } from "@effect/cli";
-import { Console, Effect, Option } from "effect";
+import { Console, Effect, Option, Schema } from "effect";
 import {
   AuthenticationRequiredError,
   PermissionDeniedError,
   RateLimitError,
   YouTubeServiceUnavailableError,
 } from "../../domain/errors/youtube-errors";
+import { MaxResults } from "../../domain/models/youtube";
 import { YouTubeService } from "../../services/youtube";
 
 const trackedOption = Options.boolean("tracked").pipe(
@@ -28,18 +29,26 @@ const pageTokenOption = Options.text("page-token").pipe(
   Options.optional,
 );
 
+const limitOption = Options.integer("limit").pipe(
+  Options.withAlias("l"),
+  Options.withDescription("Number of results per page (1-50)"),
+  Options.withDefault(20),
+  Options.withSchema(MaxResults),
+);
+
 export const playlistsCommand = Command.make(
   "playlists",
   {
     tracked: trackedOption,
     format: formatOption,
     pageToken: pageTokenOption,
+    limit: limitOption,
   },
-  ({ tracked, format, pageToken }) =>
+  ({ tracked, format, pageToken, limit }) =>
     Effect.gen(function* () {
       const youtube = yield* YouTubeService;
       const token = Option.getOrElse(pageToken, () => undefined);
-      const response = yield* youtube.listPlaylists(token);
+      const response = yield* youtube.listPlaylists(token, limit);
 
       yield* Console.log(JSON.stringify(response, null, 2));
 

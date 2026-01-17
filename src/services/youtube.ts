@@ -15,7 +15,10 @@ import {
   YouTubeNetworkError,
   YouTubeServiceUnavailableError,
 } from "../domain/errors/youtube-errors";
-import { PlaylistListResponse } from "../domain/models/youtube";
+import {
+  type MaxResults,
+  PlaylistListResponse,
+} from "../domain/models/youtube";
 
 const handleHttpError = (
   error: HttpClientError,
@@ -93,6 +96,7 @@ export class YouTubeService extends Context.Tag("@app/YouTubeService")<
   {
     readonly listPlaylists: (
       pageToken?: string,
+      maxResults?: MaxResults,
     ) => Effect.Effect<
       PlaylistListResponse,
       | YouTubeApiError
@@ -111,14 +115,14 @@ export class YouTubeService extends Context.Tag("@app/YouTubeService")<
     Effect.gen(function* () {
       const http = yield* HttpClient.HttpClient;
 
-      const listPlaylists = (pageToken?: string) =>
+      const listPlaylists = (pageToken?: string, maxResults?: MaxResults) =>
         Effect.gen(function* () {
           const url = new URL(
             "https://www.googleapis.com/youtube/v3/playlists",
           );
           url.searchParams.set("part", "snippet,contentDetails,id");
           url.searchParams.set("mine", "true");
-          url.searchParams.set("maxResults", "50");
+          url.searchParams.set("maxResults", String(maxResults ?? 20));
           if (pageToken) {
             url.searchParams.set("pageToken", pageToken);
           }

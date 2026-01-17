@@ -9,6 +9,12 @@ export const VideoCount = Schema.Int.pipe(
 );
 export type VideoCount = typeof VideoCount.Type;
 
+export const MaxResults = Schema.Int.pipe(
+  Schema.between(1, 50),
+  Schema.brand("MaxResults"),
+);
+export type MaxResults = typeof MaxResults.Type;
+
 export class PlaylistSnippet extends Schema.Class<PlaylistSnippet>(
   "PlaylistSnippet",
 )({
