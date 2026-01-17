@@ -117,15 +117,14 @@ export class YouTubeService extends Context.Tag("@app/YouTubeService")<
 
       const listPlaylists = (pageToken?: string, maxResults?: MaxResults) =>
         Effect.gen(function* () {
-          const searchParams = new URLSearchParams({
-            part: "snippet,contentDetails,id",
-            mine: "true",
-            maxResults: String(maxResults ?? 20),
-          });
-          if (pageToken) {
-            searchParams.set("pageToken", pageToken);
-          }
-          const request = HttpClientRequest.get(`/playlists?${searchParams}`);
+          const request = HttpClientRequest.get("/playlists").pipe(
+            HttpClientRequest.setUrlParams({
+              part: "snippet,contentDetails,id",
+              mine: "true",
+              maxResults: maxResults ?? 20,
+              ...(pageToken && { pageToken }),
+            }),
+          );
           const response = yield* http.execute(request);
 
           return yield* HttpClientResponse.schemaBodyJson(PlaylistListResponse)(
