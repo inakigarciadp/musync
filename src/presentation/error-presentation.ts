@@ -1,5 +1,5 @@
 import type { Teardown } from "@effect/platform/Runtime";
-import { Cause, Console, Effect, Exit, Match } from "effect";
+import { Cause, Config, Console, Effect, Exit, Match } from "effect";
 import type { AppError } from "../domain/errors";
 
 // ANSI color codes
@@ -215,6 +215,9 @@ const formatError: (error: AppError) => FormattedError =
  */
 export const handleCliError = (error: AppError) =>
   Effect.gen(function* () {
+    const debug = yield* Config.boolean("DEBUG").pipe(
+      Config.orElse(() => Config.succeed(false)),
+    );
     const formatted = formatError(error);
 
     yield* Console.error("");
@@ -232,7 +235,7 @@ export const handleCliError = (error: AppError) =>
     yield* Console.error("");
 
     // Show stack trace in debug mode
-    if (process.env.DEBUG) {
+    if (debug) {
       yield* Console.error(dim("Stack trace:"));
       yield* Console.error(dim(Cause.pretty(Cause.fail(error))));
     }
@@ -246,10 +249,13 @@ export const handleCliError = (error: AppError) =>
  */
 export const handleDefect = (defect: unknown) =>
   Effect.gen(function* () {
+    const debug = yield* Config.boolean("DEBUG").pipe(
+      Config.orElse(() => Config.succeed(false)),
+    );
     yield* Console.error("");
     yield* Console.error(red("Error: Unexpected error occurred"));
 
-    if (process.env.DEBUG) {
+    if (debug) {
       yield* Console.error(dim("Stack trace:"));
       yield* Console.error(dim(Cause.pretty(Cause.die(defect))));
     } else {
