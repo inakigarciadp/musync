@@ -1,3 +1,4 @@
+import { FetchHttpClient } from "@effect/platform";
 import { ConfigProvider, Layer } from "effect";
 import { OAuthHttpClientLive } from "../http/layers/oauth-http";
 import { YouTubeApiHttpClientLive } from "../http/layers/youtube-api-http";
@@ -11,16 +12,21 @@ const configServiceLayer = ConfigService.layer.pipe(
   Layer.provide(configProviderLayer),
 );
 
+// OAuth HTTP client with base URL configured
+const oauthHttpClientLayer = OAuthHttpClientLive.pipe(
+  Layer.provide(FetchHttpClient.layer),
+);
+
 // Base layer providing AuthService with all its dependencies
 const authServiceLayer = AuthService.layer.pipe(
   Layer.provide(configServiceLayer),
-  Layer.provide(OAuthHttpClientLive),
+  Layer.provide(oauthHttpClientLayer),
 );
 
 // Compose the authenticated YouTube HTTP client with AuthService
 const youtubeHttpClientLayer = YouTubeApiHttpClientLive.pipe(
   Layer.provide(authServiceLayer),
-  Layer.provide(OAuthHttpClientLive),
+  Layer.provide(FetchHttpClient.layer),
 );
 
 // YouTubeService layer using the authenticated HTTP client
