@@ -8,7 +8,6 @@ import { Context, Effect, Layer, Match } from "effect";
 import type { ParseError } from "effect/ParseResult";
 import {
   AuthenticationRequiredError,
-  type PermissionDeniedError,
   RateLimitError,
   ResourceNotFoundError,
   YouTubeApiError,
@@ -27,7 +26,6 @@ const handleHttpError = (
   | YouTubeApiError
   | YouTubeNetworkError
   | AuthenticationRequiredError
-  | PermissionDeniedError
   | RateLimitError
   | ResourceNotFoundError
   | YouTubeServiceUnavailableError,
@@ -102,7 +100,6 @@ export class YouTubeService extends Context.Tag("@app/YouTubeService")<
       | YouTubeApiError
       | YouTubeNetworkError
       | AuthenticationRequiredError
-      | PermissionDeniedError
       | RateLimitError
       | ResourceNotFoundError
       | YouTubeServiceUnavailableError

@@ -19,7 +19,6 @@ import type {
 // YouTube errors
 import type {
   AuthenticationRequiredError,
-  PermissionDeniedError,
   PlaylistOperationUnsupportedError,
   RateLimitError,
   ResourceNotFoundError,
@@ -49,7 +48,6 @@ export type AppError =
   | TokenStorageError
   // YouTube errors
   | AuthenticationRequiredError
-  | PermissionDeniedError
   | ResourceNotFoundError
   | RateLimitError
   | YouTubeServiceUnavailableError

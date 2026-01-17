@@ -29,11 +29,6 @@ const formatError: (error: AppError) => FormattedError =
       suggestion: "Run 'musync auth login' to authenticate.",
       exitCode: 2,
     }),
-    PermissionDeniedError: (e) => ({
-      title: "Permission denied",
-      message: e.message,
-      exitCode: 3,
-    }),
     TokenStorageError: (e) => ({
       title: "Token storage error",
       message: e.reason,
