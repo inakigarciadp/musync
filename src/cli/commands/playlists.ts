@@ -50,22 +50,10 @@ export const playlistsCommand = Command.make(
       }
     }).pipe(
       Effect.catchTags({
-        AuthenticationRequiredError: (error) =>
-          Effect.gen(function* () {
-            yield* Console.error(error.message);
-          }),
-        PermissionDeniedError: (error) =>
-          Effect.gen(function* () {
-            yield* Console.error(error.message);
-          }),
-        RateLimitError: (error) =>
-          Effect.gen(function* () {
-            yield* Console.error(error.message);
-          }),
-        YouTubeServiceUnavailableError: (error) =>
-          Effect.gen(function* () {
-            yield* Console.error(error.message);
-          }),
+        AuthenticationRequiredError: (error) => Console.error(error.message),
+        PermissionDeniedError: (error) => Console.error(error.message),
+        RateLimitError: (error) => Console.error(error.message),
+        YouTubeServiceUnavailableError: (error) => Console.error(error.message),
       }),
     ),
 ).pipe(Command.withDescription("List all playlists from API"));
