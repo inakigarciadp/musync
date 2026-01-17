@@ -1,11 +1,5 @@
 import { Command, Options } from "@effect/cli";
-import { Console, Effect, Option, Schema } from "effect";
-import {
-  AuthenticationRequiredError,
-  PermissionDeniedError,
-  RateLimitError,
-  YouTubeServiceUnavailableError,
-} from "../../domain/errors/youtube-errors";
+import { Console, Effect, Option } from "effect";
 import { MaxResults } from "../../domain/models/youtube";
 import { YouTubeService } from "../../services/youtube";
 
@@ -51,13 +45,5 @@ export const playlistsCommand = Command.make(
       const response = yield* youtube.listPlaylists(token, limit);
 
       yield* Console.log(JSON.stringify(response, null, 2));
-
-    }).pipe(
-      Effect.catchTags({
-        AuthenticationRequiredError: (error) => Console.error(error.message),
-        PermissionDeniedError: (error) => Console.error(error.message),
-        RateLimitError: (error) => Console.error(error.message),
-        YouTubeServiceUnavailableError: (error) => Console.error(error.message),
-      }),
-    ),
+    }),
 ).pipe(Command.withDescription("List all playlists from API"));
