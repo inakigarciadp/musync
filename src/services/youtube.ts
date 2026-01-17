@@ -8,7 +8,7 @@ import { Context, Effect, Layer, Match } from "effect";
 import type { ParseError } from "effect/ParseResult";
 import {
   AuthenticationRequiredError,
-  PermissionDeniedError,
+  type PermissionDeniedError,
   RateLimitError,
   ResourceNotFoundError,
   YouTubeApiError,
@@ -44,8 +44,8 @@ const handleHttpError = (
       ),
       Match.when(403, () =>
         Effect.fail(
-          PermissionDeniedError.make({
-            message: `Permission denied: ${error.response.status}`,
+          AuthenticationRequiredError.make({
+            message: "Not authenticated. Run 'musync auth login' first.",
           }),
         ),
       ),
