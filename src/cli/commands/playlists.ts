@@ -52,11 +52,6 @@ export const playlistsCommand = Command.make(
 
       yield* Console.log(JSON.stringify(response, null, 2));
 
-      if (response.nextPageToken) {
-        yield* Console.log(
-          `\nMore playlists available. Use --page-token=${response.nextPageToken} to get next page.`,
-        );
-      }
     }).pipe(
       Effect.catchTags({
         AuthenticationRequiredError: (error) => Console.error(error.message),
