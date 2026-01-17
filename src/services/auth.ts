@@ -111,7 +111,7 @@ export class AuthService extends Context.Tag("@app/AuthService")<
         const clientSecret = config.clientSecret;
 
         const response = yield* http.pipe(HttpClient.filterStatusOk).execute(
-          HttpClientRequest.post("https://oauth2.googleapis.com/token").pipe(
+          HttpClientRequest.post("/token").pipe(
             HttpClientRequest.bodyUrlParams({
               client_id: clientId,
               client_secret: Redacted.value(clientSecret),
