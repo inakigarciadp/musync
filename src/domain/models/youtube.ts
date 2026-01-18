@@ -1,5 +1,7 @@
 import { Schema } from "effect";
 
+// Playlist-related types
+
 export const PlaylistId = Schema.String.pipe(Schema.brand("PlaylistId"));
 export type PlaylistId = typeof PlaylistId.Type;
 
@@ -53,5 +55,49 @@ export class PlaylistListResponse extends Schema.Class<PlaylistListResponse>(
   etag: Schema.optional(Schema.String),
   pageInfo: Schema.optional(PageInfo),
   items: Schema.Array(Playlist),
+  nextPageToken: Schema.optional(Schema.String),
+}) {}
+
+// Track-related types
+
+export const VideoId = Schema.String.pipe(Schema.brand("VideoId"));
+export type VideoId = typeof VideoId.Type;
+
+export const Position = Schema.Int.pipe(
+  Schema.nonNegative(),
+  Schema.brand("Position"),
+);
+export type Position = typeof Position.Type;
+
+export class TrackSnippet extends Schema.Class<TrackSnippet>("TrackSnippet")({
+  title: Schema.String,
+  publishedAt: Schema.Date, // When added to playlist
+  channelTitle: Schema.String, // Uploader name
+  playlistId: PlaylistId,
+  position: Position,
+}) {}
+
+export class TrackContentDetails extends Schema.Class<TrackContentDetails>(
+  "TrackContentDetails",
+)({
+  videoId: VideoId,
+  videoPublishedAt: Schema.Date, // When video was published to YouTube
+}) {}
+
+export class Track extends Schema.Class<Track>("Track")({
+  kind: Schema.optional(Schema.String),
+  etag: Schema.optional(Schema.String),
+  id: Schema.String, // PlaylistItem ID (not video ID)
+  snippet: TrackSnippet,
+  contentDetails: TrackContentDetails,
+}) {}
+
+export class TrackListResponse extends Schema.Class<TrackListResponse>(
+  "TrackListResponse",
+)({
+  kind: Schema.optional(Schema.String),
+  etag: Schema.optional(Schema.String),
+  pageInfo: Schema.optional(PageInfo),
+  items: Schema.Array(Track),
   nextPageToken: Schema.optional(Schema.String),
 }) {}
