@@ -47,6 +47,6 @@ export const playlistsCommand = Command.make(
       const token = Option.getOrElse(pageToken, () => undefined);
       const response = yield* youtube.listPlaylists(token, limit);
 
-      yield* formatPlaylists(response, format as Format);
+      yield* formatPlaylists(response, format);
     }),
 ).pipe(Command.withDescription("List all playlists from API"));
