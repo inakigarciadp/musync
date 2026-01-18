@@ -11,11 +11,10 @@ export const refetchCommand = Command.make(
       Args.withDescription("YouTube playlist ID to refetch"),
     ),
   },
-  ({ playlistId }) =>
-    Effect.gen(function* () {
-      yield* Effect.logInfo("Refetch not yet implemented");
-      return yield* NotImplementedError.make({
-        command: "musync maintenance refetch",
-      });
-    }),
+  Effect.fnUntraced(function* ({ playlistId }: { playlistId: string }) {
+    yield* Effect.logInfo("Refetch not yet implemented");
+    return yield* NotImplementedError.make({
+      command: "musync maintenance refetch",
+    });
+  }),
 ).pipe(Command.withDescription("Re-fetch metadata"));
