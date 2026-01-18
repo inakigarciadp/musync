@@ -75,7 +75,10 @@ export const formatTrackTable = Effect.fnUntraced(function* (
   for (const track of items) {
     const pos = String(track.snippet.position + 1);
     const title = truncate(track.snippet.title, TITLE_WIDTH - 2);
-    const channel = truncate(track.snippet.channelTitle, CHANNEL_WIDTH - 2);
+    const channel = truncate(
+      track.snippet.videoOwnerChannelTitle ?? "Unknown",
+      CHANNEL_WIDTH - 2,
+    );
     const date = formatDate(track.snippet.publishedAt);
     const id = track.contentDetails.videoId;
     yield* Console.log(
