@@ -40,11 +40,16 @@ export const tracksCommand = Command.make(
     limit: limitOption,
     format: formatOption,
   },
-  ({ playlistId, downloaded, missing, limit, format }) =>
-    Effect.gen(function* () {
-      yield* Effect.logInfo("Tracks listing not yet implemented");
-      return yield* NotImplementedError.make({
-        command: "musync tracks",
-      });
-    }),
+  Effect.fnUntraced(function* ({
+    playlistId,
+    downloaded,
+    missing,
+    limit,
+    format,
+  }) {
+    yield* Effect.logInfo("Tracks listing not yet implemented");
+    return yield* NotImplementedError.make({
+      command: "musync tracks",
+    });
+  }),
 ).pipe(Command.withDescription("Show tracks in playlist"));
