@@ -1,6 +1,8 @@
 import { Command, Options } from "@effect/cli";
-import { Console, Effect, Option } from "effect";
+import { Effect, Option } from "effect";
+import { FormatSchema } from "../../domain/models/format";
 import { MaxResults } from "../../domain/models/youtube";
+import { type Format, formatPlaylists } from "../../presentation/formatters";
 import { YouTubeService } from "../../services/youtube";
 
 const trackedOption = Options.boolean("tracked").pipe(
@@ -16,6 +18,7 @@ const formatOption = Options.choice("format", [
   Options.withAlias("f"),
   Options.withDescription("Output format"),
   Options.withDefault("table"),
+  Options.withSchema(FormatSchema),
 );
 
 const pageTokenOption = Options.text("page-token").pipe(
@@ -44,6 +47,6 @@ export const playlistsCommand = Command.make(
       const token = Option.getOrElse(pageToken, () => undefined);
       const response = yield* youtube.listPlaylists(token, limit);
 
-      yield* Console.log(JSON.stringify(response, null, 2));
+      yield* formatPlaylists(response, format as Format);
     }),
 ).pipe(Command.withDescription("List all playlists from API"));
