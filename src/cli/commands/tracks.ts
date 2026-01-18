@@ -1,7 +1,7 @@
 import { Args, Command, Options } from "@effect/cli";
 import { Effect, Option } from "effect";
 import { FormatSchema } from "../../domain/models/format";
-import { MaxResults, PlaylistId } from "../../domain/models/youtube";
+import { MaxResults, PlaylistId } from "../../domain/models/youtube/playlist";
 import { formatTracks } from "../../presentation/formatters";
 import { YouTubeService } from "../../services/youtube";
 

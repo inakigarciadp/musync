@@ -18,8 +18,8 @@ import {
   type MaxResults,
   type PlaylistId,
   PlaylistListResponse,
-  TrackListResponse,
-} from "../domain/models/youtube";
+} from "../domain/models/youtube/playlist";
+import { TrackListResponse } from "../domain/models/youtube/tracks";
 
 const handleHttpError = (
   error: HttpClientError,

@@ -1,8 +1,6 @@
 import { Console, Effect } from "effect";
-import type {
-  PlaylistListResponse,
-  TrackListResponse,
-} from "../../domain/models/youtube";
+import type { PlaylistListResponse } from "../../domain/models/youtube/playlist";
+import type { TrackListResponse } from "../../domain/models/youtube/tracks";
 import { bold, dim, formatDate, pluralize } from "./utils";
 
 export const formatPlaylistCompact = Effect.fnUntraced(function* (
