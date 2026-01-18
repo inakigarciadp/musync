@@ -15,8 +15,8 @@ export const YouTubeApiHttpClientLive = Layer.effect(
       HttpClient.mapRequest(HttpClientRequest.prependUrl(YOUTUBE_API_BASE_URL)),
       // Convert non-2xx responses to ResponseError so they're caught by handleHttpError
       HttpClient.filterStatusOk,
-      HttpClient.mapRequestEffect((request) =>
-        Effect.gen(function* () {
+      HttpClient.mapRequestEffect(
+        Effect.fnUntraced(function* (request) {
           const tokens = yield* auth.loadTokens().pipe(
             Effect.catchTags({
               TokenStorageError: () => Effect.succeed(null),
