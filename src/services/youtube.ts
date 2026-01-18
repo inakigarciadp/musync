@@ -112,8 +112,8 @@ export class YouTubeService extends Context.Tag("@app/YouTubeService")<
     Effect.gen(function* () {
       const http = yield* HttpClient.HttpClient;
 
-      const listPlaylists = (pageToken?: string, maxResults?: MaxResults) =>
-        Effect.gen(function* () {
+      const listPlaylists = Effect.fnUntraced(
+        function* (pageToken?: string, maxResults?: MaxResults) {
           const request = HttpClientRequest.get("/playlists").pipe(
             HttpClientRequest.setUrlParams({
               part: "snippet,contentDetails,id",
@@ -127,12 +127,15 @@ export class YouTubeService extends Context.Tag("@app/YouTubeService")<
           return yield* HttpClientResponse.schemaBodyJson(PlaylistListResponse)(
             response,
           );
-        }).pipe(
-          Effect.catchTags({
-            ResponseError: handleHttpError,
-            RequestError: handleHttpError,
-          }),
-        );
+        },
+        (effect) =>
+          effect.pipe(
+            Effect.catchTags({
+              ResponseError: handleHttpError,
+              RequestError: handleHttpError,
+            }),
+          ),
+      );
 
       return YouTubeService.of({ listPlaylists });
     }),
