@@ -11,11 +11,10 @@ export const validateCommand = Command.make(
       Args.withDescription("YouTube playlist ID to validate"),
     ),
   },
-  ({ playlistId }) =>
-    Effect.gen(function* () {
-      yield* Effect.logInfo("Validate not yet implemented");
-      return yield* NotImplementedError.make({
-        command: "musync maintenance validate",
-      });
-    }),
+  Effect.fnUntraced(function* ({ playlistId }: { playlistId: string }) {
+    yield* Effect.logInfo("Validate not yet implemented");
+    return yield* NotImplementedError.make({
+      command: "musync maintenance validate",
+    });
+  }),
 ).pipe(Command.withDescription("Verify playlist files"));
