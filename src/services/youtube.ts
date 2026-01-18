@@ -16,7 +16,9 @@ import {
 } from "../domain/errors/youtube-errors";
 import {
   type MaxResults,
+  type PlaylistId,
   PlaylistListResponse,
+  TrackListResponse,
 } from "../domain/models/youtube";
 
 const handleHttpError = (
@@ -105,6 +107,20 @@ export class YouTubeService extends Context.Tag("@app/YouTubeService")<
       | YouTubeServiceUnavailableError
       | ParseError
     >;
+    readonly listPlaylistItems: (
+      playlistId: PlaylistId,
+      pageToken?: string,
+      maxResults?: MaxResults,
+    ) => Effect.Effect<
+      TrackListResponse,
+      | YouTubeApiError
+      | YouTubeNetworkError
+      | AuthenticationRequiredError
+      | RateLimitError
+      | ResourceNotFoundError
+      | YouTubeServiceUnavailableError
+      | ParseError
+    >;
   }
 >() {
   static readonly layer = Layer.effect(
@@ -137,7 +153,36 @@ export class YouTubeService extends Context.Tag("@app/YouTubeService")<
           ),
       );
 
-      return YouTubeService.of({ listPlaylists });
+      const listPlaylistItems = Effect.fnUntraced(
+        function* (
+          playlistId: PlaylistId,
+          pageToken?: string,
+          maxResults?: MaxResults,
+        ) {
+          const request = HttpClientRequest.get("/playlistItems").pipe(
+            HttpClientRequest.setUrlParams({
+              part: "snippet,contentDetails",
+              playlistId,
+              maxResults: maxResults ?? 20,
+              ...(pageToken && { pageToken }),
+            }),
+          );
+          const response = yield* http.execute(request);
+
+          return yield* HttpClientResponse.schemaBodyJson(TrackListResponse)(
+            response,
+          );
+        },
+        (effect) =>
+          effect.pipe(
+            Effect.catchTags({
+              ResponseError: handleHttpError,
+              RequestError: handleHttpError,
+            }),
+          ),
+      );
+
+      return YouTubeService.of({ listPlaylists, listPlaylistItems });
     }),
   );
 }
