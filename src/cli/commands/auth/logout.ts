@@ -2,8 +2,10 @@ import { Command } from "@effect/cli";
 import { Console, Effect } from "effect";
 import { AuthService } from "../../../services/auth";
 
-export const logoutCommand = Command.make("logout", {}, () =>
-  Effect.gen(function* () {
+export const logoutCommand = Command.make(
+  "logout",
+  {},
+  Effect.fnUntraced(function* () {
     const auth = yield* AuthService;
     const tokens = yield* auth.loadTokens();
 

@@ -9,8 +9,10 @@ import {
 } from "../../../infrastructure/oauth/callback-server";
 import { AuthService } from "../../../services/auth";
 
-export const loginCommand = Command.make("login", {}, () =>
-  Effect.gen(function* () {
+export const loginCommand = Command.make(
+  "login",
+  {},
+  Effect.fnUntraced(function* () {
     yield* Console.log("Starting OAuth2 authentication flow...");
 
     const auth = yield* AuthService;
@@ -34,8 +36,9 @@ export const loginCommand = Command.make("login", {}, () =>
     yield* Console.log("Opening browser for authorization...");
 
     yield* openBrowser(authUrl).pipe(
-      Effect.catchTag("BrowserOpenError", (_error) =>
-        Effect.gen(function* () {
+      Effect.catchTag(
+        "BrowserOpenError",
+        Effect.fnUntraced(function* (_error) {
           yield* Console.warn("Could not open browser automatically.");
           yield* Console.log(`Please visit this URL: ${authUrl}`);
         }),
