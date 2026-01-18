@@ -12,9 +12,8 @@ export const configSetCommand = Command.make(
       Args.withDescription("Value to set"),
     ),
   },
-  ({ key, value }) =>
-    Effect.gen(function* () {
-      yield* Effect.logInfo("Config set not yet implemented");
-      return yield* NotImplementedError.make({ command: "musync config set" });
-    }),
+  Effect.fnUntraced(function* ({ key, value }: { key: string; value: string }) {
+    yield* Effect.logInfo("Config set not yet implemented");
+    return yield* NotImplementedError.make({ command: "musync config set" });
+  }),
 ).pipe(Command.withDescription("Set preference"));
