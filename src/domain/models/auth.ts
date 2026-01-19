@@ -43,6 +43,15 @@ export class TokenResponse extends Schema.Class<TokenResponse>("TokenResponse")(
   },
 ) {}
 
+export class TokenRefreshResponse extends Schema.Class<TokenRefreshResponse>(
+  "TokenRefreshResponse",
+)({
+  access_token: AccessToken,
+  expires_in: Seconds,
+  scope: Schema.optional(Scope),
+  token_type: TokenType,
+}) {}
+
 export class StoredTokens extends Schema.Class<StoredTokens>("StoredTokens")({
   accessToken: AccessToken,
   refreshToken: RefreshToken,
