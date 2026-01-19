@@ -74,6 +74,12 @@ const formatError: (error: AppError) => FormattedError =
       message: e.reason,
       exitCode: 1,
     }),
+    TokenRefreshError: () => ({
+      title: "Session expired",
+      message: "Refresh token expired",
+      suggestion: "Run 'musync auth login' to re-authenticate.",
+      exitCode: 2,
+    }),
 
     // YouTube errors
     RateLimitError: (e) => ({

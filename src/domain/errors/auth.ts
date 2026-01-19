@@ -57,3 +57,10 @@ export class TokenStorageError extends Schema.TaggedError<TokenStorageError>()(
     reason: Schema.String,
   },
 ) {}
+
+export class TokenRefreshError extends Schema.TaggedError<TokenRefreshError>()(
+  "TokenRefreshError",
+  {
+    reason: Schema.String,
+  },
+) {}
