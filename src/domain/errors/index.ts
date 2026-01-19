@@ -13,6 +13,7 @@ import type {
   PKCEGenerationError,
   ServerStartError,
   TokenExchangeError,
+  TokenRefreshError,
   TokenStorageError,
 } from "./auth";
 
@@ -46,6 +47,7 @@ export type AppError =
   | AuthTimeoutError
   | FileSystemError
   | TokenStorageError
+  | TokenRefreshError
   // YouTube errors
   | AuthenticationRequiredError
   | ResourceNotFoundError
