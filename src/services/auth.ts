@@ -5,18 +5,20 @@ import {
   HttpClientRequest,
   HttpClientResponse,
 } from "@effect/platform";
-import { Context, Effect, Layer, Redacted, Schema } from "effect";
+import { Context, Effect, Layer, Option, Redacted, Ref, Schema } from "effect";
 import type { ParseError } from "effect/ParseResult";
 import {
   type InvalidAuthorizationCodeError,
   type PKCEGenerationError,
   type TokenExchangeError,
+  TokenRefreshError,
   TokenStorageError,
 } from "../domain/errors/auth";
 import {
   PKCEPair,
-  type StoredTokens,
+  StoredTokens,
   StoredTokensFromJson,
+  TokenRefreshResponse,
   TokenResponse,
 } from "../domain/models/auth";
 import {
@@ -57,6 +59,20 @@ export class AuthService extends Context.Tag("@app/AuthService")<
       TokenStorageError | ParseError
     >;
     readonly clearTokens: () => Effect.Effect<void, TokenStorageError>;
+    readonly refreshTokens: () => Effect.Effect<
+      StoredTokens,
+      | TokenRefreshError
+      | TokenStorageError
+      | HttpClientError.HttpClientError
+      | ParseError
+    >;
+    readonly getAccessToken: () => Effect.Effect<
+      string,
+      | TokenRefreshError
+      | TokenStorageError
+      | HttpClientError.HttpClientError
+      | ParseError
+    >;
   }
 >() {
   static readonly layer = Layer.effect(
@@ -178,6 +194,104 @@ export class AuthService extends Context.Tag("@app/AuthService")<
         }),
       );
 
+      const refreshSemaphore = yield* Effect.makeSemaphore(1);
+      const tokensRef = yield* Ref.make<Option.Option<StoredTokens>>(
+        Option.none(),
+      );
+
+      const refreshTokensInternal = Effect.fn(
+        "AuthService.refreshTokensInternal",
+      )(function* () {
+        const tokensOpt = yield* Effect.map(loadTokens, Option.fromNullable);
+        const currentTokens = Option.getOrThrowWith(tokensOpt, () =>
+          TokenRefreshError.make({
+            reason: "No stored tokens found - please login first",
+          }),
+        );
+
+        const clientSecret = config.clientSecret;
+
+        const response = yield* http.pipe(HttpClient.filterStatusOk).execute(
+          HttpClientRequest.post("/token").pipe(
+            HttpClientRequest.bodyUrlParams({
+              client_id: config.clientId,
+              client_secret: Redacted.value(clientSecret),
+              refresh_token: currentTokens.refreshToken,
+              grant_type: "refresh_token",
+            }),
+          ),
+        );
+
+        const tokenResponse =
+          yield* HttpClientResponse.schemaBodyJson(TokenRefreshResponse)(
+            response,
+          );
+
+        const newTokens = StoredTokens.make({
+          accessToken: tokenResponse.access_token,
+          refreshToken: currentTokens.refreshToken,
+          expiresAt: new Date(Date.now() + tokenResponse.expires_in * 1000),
+        });
+
+        return newTokens;
+      });
+
+      const getAccessToken = Effect.fn("AuthService.getAccessToken")(
+        function* () {
+          const now = Date.now();
+          const FIVE_MINUTES = 5 * 60 * 1000;
+
+          let tokensOpt = yield* Ref.get(tokensRef);
+          if (Option.isNone(tokensOpt)) {
+            const rawTokens = yield* loadTokens;
+            tokensOpt = Option.fromNullable(rawTokens);
+            if (Option.isSome(tokensOpt)) {
+              yield* Ref.set(tokensRef, tokensOpt);
+            }
+          }
+
+          const tokens = Option.getOrThrowWith(tokensOpt, () =>
+            TokenRefreshError.make({
+              reason: "Not authenticated - please run musync auth login",
+            }),
+          );
+
+          if (tokens.expiresAt.getTime() - now < FIVE_MINUTES) {
+            return yield* refreshSemaphore.withPermits(1)(
+              Effect.gen(function* () {
+                const freshOpt = yield* Ref.get(tokensRef);
+                if (Option.isSome(freshOpt)) {
+                  const t = freshOpt.value;
+                  if (t.expiresAt.getTime() - Date.now() >= FIVE_MINUTES) {
+                    return t.accessToken;
+                  }
+                }
+
+                const newTokens = yield* refreshTokensInternal();
+                yield* storeTokens(newTokens);
+                yield* Ref.set(tokensRef, Option.some(newTokens));
+                return newTokens.accessToken;
+              }),
+            );
+          }
+
+          return tokens.accessToken;
+        },
+      );
+
+      const refreshTokens = Effect.fn("AuthService.refreshTokens")(
+        function* () {
+          return yield* refreshSemaphore.withPermits(1)(
+            Effect.gen(function* () {
+              const newTokens = yield* refreshTokensInternal();
+              yield* storeTokens(newTokens);
+              yield* Ref.set(tokensRef, Option.some(newTokens));
+              return newTokens;
+            }),
+          );
+        },
+      );
+
       return AuthService.of({
         generatePKCEPair,
         buildAuthorizationUrl,
@@ -185,6 +299,8 @@ export class AuthService extends Context.Tag("@app/AuthService")<
         storeTokens,
         loadTokens: () => loadTokens,
         clearTokens: () => clearTokens,
+        refreshTokens,
+        getAccessToken,
       });
     }),
   );
