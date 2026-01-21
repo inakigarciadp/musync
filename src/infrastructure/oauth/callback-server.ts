@@ -75,8 +75,6 @@ export const acquireCallbackServer: Effect.Effect<
     };
   }),
   Effect.fnUntraced(function* (resource, exit) {
-    const exitTag = exit._tag;
-    console.log(`Stopping callback server (${exitTag})...`);
     resource.server.stop();
     yield* Queue.shutdown(resource.queue);
   }),
