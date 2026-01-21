@@ -1,3 +1,7 @@
+# Available commands
+- `bun typecheck` for running TS type checking.
+- `bun check` for running the linter.
+
 # Developer guide
 
 There is no build command in this project. Just run `bun index.ts <command>`.
