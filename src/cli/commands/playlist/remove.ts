@@ -11,11 +11,10 @@ export const removePlaylistCommand = Command.make(
       Args.withDescription("YouTube playlist ID to untrack"),
     ),
   },
-  ({ playlistId }) =>
-    Effect.gen(function* () {
-      yield* Effect.logInfo("Remove playlist not yet implemented");
-      return yield* NotImplementedError.make({
-        command: "musync playlist remove",
-      });
-    }),
+  Effect.fnUntraced(function* ({ playlistId }: { playlistId: string }) {
+    yield* Effect.logInfo("Remove playlist not yet implemented");
+    return yield* NotImplementedError.make({
+      command: "musync playlist remove",
+    });
+  }),
 ).pipe(Command.withDescription("Stop tracking playlist"));

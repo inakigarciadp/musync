@@ -12,11 +12,10 @@ export const addPlaylistCommand = Command.make(
       Args.withDescription("YouTube playlist IDs to track"),
     ),
   },
-  ({ playlistIds }) =>
-    Effect.gen(function* () {
-      yield* Effect.logInfo("Add playlist not yet implemented");
-      return yield* NotImplementedError.make({
-        command: "musync playlist add",
-      });
-    }),
+  Effect.fnUntraced(function* ({ playlistIds }: { playlistIds: string[] }) {
+    yield* Effect.logInfo("Add playlist not yet implemented");
+    return yield* NotImplementedError.make({
+      command: "musync playlist add",
+    });
+  }),
 ).pipe(Command.withDescription("Track playlists"));
