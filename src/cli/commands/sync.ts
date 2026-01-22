@@ -22,27 +22,33 @@ const downloadOnlyOption = Options.boolean("download-only").pipe(
   Options.withDescription("Skip API fetch"),
 );
 
+const playlistId = Args.text({ name: "playlistId" })
+  .pipe(Args.optional)
+  .pipe(
+    Args.withDescription(
+      "YouTube playlist ID to sync (optional, syncs all if not provided)",
+    ),
+  );
+
 export const syncCommand = Command.make(
   "sync",
   {
+    playlistId,
     dryRun: dryRunOption,
     force: forceOption,
     metadataOnly: metadataOnlyOption,
     downloadOnly: downloadOnlyOption,
   },
-  ({ dryRun, force, metadataOnly, downloadOnly }) =>
+  ({ playlistId, dryRun, force, metadataOnly, downloadOnly }) =>
     Effect.gen(function* () {
-      yield* Effect.logInfo("Sync not yet implemented");
-      return yield* NotImplementedError.make({ command: "musync sync" });
+      if (playlistId) {
+        yield* Effect.logInfo(`Syncing playlist: ${playlistId}`);
+        yield* Effect.logInfo("Playlist sync not yet implemented");
+        return yield* NotImplementedError.make({ command: "musync sync" });
+      } else {
+        yield* Effect.logInfo("Syncing all playlists");
+        yield* Effect.logInfo("Sync not yet implemented");
+        return yield* NotImplementedError.make({ command: "musync sync" });
+      }
     }),
 ).pipe(Command.withDescription("Fetch metadata and download new tracks"));
-
-export const syncPlaylistCommand = Command.make(
-  "sync",
-  { playlistId: Args.text({ name: "playlistId" }) },
-  ({ playlistId }) =>
-    Effect.gen(function* () {
-      yield* Effect.logInfo("Playlist sync not yet implemented");
-      return yield* NotImplementedError.make({ command: "musync sync" });
-    }),
-).pipe(Command.withDescription("Sync specific playlist"));
