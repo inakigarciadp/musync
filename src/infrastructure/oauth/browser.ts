@@ -2,16 +2,22 @@ import { Effect } from "effect";
 import { BrowserOpenError } from "../../domain/errors/auth-errors";
 
 export const openBrowser = Effect.fn("openBrowser")(function* (url: string) {
-  return yield* Effect.tryPromise({
-    try: () =>
-      Bun.spawn(["open", url], {
-        stdout: "pipe",
-        stderr: "pipe",
-      }).exited.then((exitCode) => {
-        if (exitCode !== 0) {
-          throw new Error(`Browser open command exited with code ${exitCode}`);
-        }
-      }),
+  const process = Bun.spawn(["open", url], {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  const exitCode = yield* Effect.tryPromise({
+    try: () => process.exited,
     catch: (error) => BrowserOpenError.make({ url, error }),
   });
+
+  if (exitCode !== 0) {
+    return yield* BrowserOpenError.make({
+      url,
+      error: `Process exited with code ${exitCode}`,
+    });
+  }
+
+  return exitCode;
 });
