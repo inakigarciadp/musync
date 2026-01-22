@@ -4,7 +4,7 @@ import {
   HttpClientRequest,
   HttpClientResponse,
 } from "@effect/platform";
-import { Context, Effect, Layer, Redacted } from "effect";
+import { Context, Effect, Layer, Redacted, Schema } from "effect";
 import type { ParseError } from "effect/ParseResult";
 import {
   type InvalidAuthorizationCodeError,
@@ -14,7 +14,7 @@ import {
 } from "../domain/errors/auth-errors";
 import {
   PKCEPair,
-  StoredTokens,
+  type StoredTokens,
   StoredTokensFromJson,
   StoredTokensToJson,
   TokenResponse,
@@ -48,8 +48,11 @@ export class AuthService extends Context.Tag("@app/AuthService")<
     >;
     readonly storeTokens: (
       tokens: StoredTokens,
-    ) => Effect.Effect<void, TokenStorageError>;
-    readonly loadTokens: Effect.Effect<StoredTokens | null, TokenStorageError>;
+    ) => Effect.Effect<void, TokenStorageError | ParseError>;
+    readonly loadTokens: Effect.Effect<
+      StoredTokens | null,
+      TokenStorageError | ParseError
+    >;
     readonly clearTokens: Effect.Effect<void, TokenStorageError>;
   }
 >() {
@@ -126,9 +129,11 @@ export class AuthService extends Context.Tag("@app/AuthService")<
               }),
           })) as typeof import("node:fs/promises");
 
+          const json = yield* Schema.encode(StoredTokensToJson)(tokens);
+
           yield* Effect.tryPromise({
             try: () =>
-              fs.writeFile(tokenStoragePath, JSON.stringify(tokens), {
+              fs.writeFile(tokenStoragePath, json, {
                 mode: 0o600,
               }),
             catch: (error) =>
@@ -155,18 +160,7 @@ export class AuthService extends Context.Tag("@app/AuthService")<
             }),
         });
 
-        const data = yield* Effect.try({
-          try: () => JSON.parse(content),
-          catch: (error) =>
-            TokenStorageError.make({
-              reason: `Failed to parse token JSON: ${error}`,
-            }),
-        });
-        return StoredTokens.make({
-          accessToken: data.accessToken,
-          refreshToken: data.refreshToken,
-          expiresAt: new Date(data.expiresAt),
-        });
+        return yield* Schema.decodeUnknown(StoredTokensFromJson)(content);
       }).pipe(
         Effect.catchTag("TokenStorageError", (error) => {
           if (error.reason.includes("ENOENT")) {
