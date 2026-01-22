@@ -19,22 +19,30 @@ export const formatPlaylistTable = (
     const { items, nextPageToken } = response;
 
     yield* Console.log(
-      bold(padRight("Title", TITLE_WIDTH)) +
+      bold(padRight("#", POS_WIDTH)) +
+        bold(padRight("Title", TITLE_WIDTH)) +
         bold(padRight("Videos", COUNT_WIDTH)) +
         bold(padRight("Created", DATE_WIDTH)) +
         bold("ID"),
     );
     yield* Console.log(
-      dim("─".repeat(TITLE_WIDTH + COUNT_WIDTH + DATE_WIDTH + ID_WIDTH)),
+      dim(
+        "─".repeat(
+          POS_WIDTH + TITLE_WIDTH + COUNT_WIDTH + DATE_WIDTH + ID_WIDTH,
+        ),
+      ),
     );
 
+    let pos = 0;
     for (const playlist of items) {
+      pos++;
       const title = truncate(playlist.snippet.title, TITLE_WIDTH - 2);
       const count = String(playlist.contentDetails.itemCount);
       const date = formatDate(playlist.snippet.publishedAt);
       const id = playlist.id;
       yield* Console.log(
-        padRight(title, TITLE_WIDTH) +
+        padRight(String(pos), POS_WIDTH) +
+          padRight(title, TITLE_WIDTH) +
           padRight(count, COUNT_WIDTH) +
           padRight(date, DATE_WIDTH) +
           id,
