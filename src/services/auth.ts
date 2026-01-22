@@ -1,7 +1,7 @@
-import fs from "node:fs/promises";
-import type { HttpClientError } from "@effect/platform";
 import {
+  FileSystem,
   HttpClient,
+  type HttpClientError,
   HttpClientRequest,
   HttpClientResponse,
 } from "@effect/platform";
@@ -80,6 +80,7 @@ export class AuthService extends Context.Tag("@app/AuthService")<
     Effect.gen(function* () {
       const config = yield* ConfigService;
       const http = yield* HttpClient.HttpClient;
+      const fs = yield* FileSystem.FileSystem;
       const tokenStoragePath = config.tokenStoragePath;
 
       const generatePKCEPair = Effect.fn("AuthService.generatePKCEPair")(
@@ -149,45 +150,50 @@ export class AuthService extends Context.Tag("@app/AuthService")<
       ) {
         const json = yield* Schema.encode(StoredTokensFromJson)(tokens);
 
-        yield* Effect.tryPromise({
-          try: () =>
-            fs.writeFile(tokenStoragePath, json, {
-              mode: 0o600,
-            }),
-          catch: (error) =>
-            TokenStorageError.make({
-              reason: `Failed to store tokens: ${error}`,
-            }),
-        });
+        yield* fs
+          .writeFileString(tokenStoragePath, json, {
+            mode: 0o600,
+          })
+          .pipe(
+            Effect.mapError((error) =>
+              TokenStorageError.make({
+                reason: `Failed to store tokens: ${error}`,
+              }),
+            ),
+          );
       });
 
-      const loadTokens = Effect.tryPromise({
-        try: () => fs.readFile(tokenStoragePath, "utf-8"),
-        catch: (error) =>
+      const loadTokens = fs.readFileString(tokenStoragePath).pipe(
+        Effect.mapError((error) =>
           TokenStorageError.make({
             reason: `Failed to read tokens: ${error}`,
           }),
-      }).pipe(
+        ),
         Effect.flatMap((content) =>
           Schema.decodeUnknown(StoredTokensFromJson)(content),
         ),
         Effect.catchTag("TokenStorageError", (error) => {
-          if (error.reason.includes("ENOENT")) {
+          if (
+            error.reason.includes("NotFound") ||
+            error.reason.includes("ENOENT")
+          ) {
             return Effect.succeed(null);
           }
           return Effect.fail(error);
         }),
       );
 
-      const clearTokens = Effect.tryPromise({
-        try: () => fs.unlink(tokenStoragePath),
-        catch: (error) =>
+      const clearTokens = fs.remove(tokenStoragePath).pipe(
+        Effect.mapError((error) =>
           TokenStorageError.make({
             reason: `Failed to delete tokens: ${error}`,
           }),
-      }).pipe(
+        ),
         Effect.catchTag("TokenStorageError", (error) => {
-          if (error.reason.includes("ENOENT")) {
+          if (
+            error.reason.includes("NotFound") ||
+            error.reason.includes("ENOENT")
+          ) {
             return Effect.void;
           }
           return Effect.fail(error);
