@@ -83,3 +83,22 @@ Set your download directory or preferences:
 musync config set output ~/MyHighResMusic
 
 ```
+
+## 🌍 Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DEBUG` | Show detailed stack traces on errors | `undefined` |
+| `XDG_DATA_HOME` | Override XDG data directory | `~/.local/share` |
+| `GOOGLE_CLIENT_ID` | YouTube OAuth client ID | (required) |
+| `GOOGLE_CLIENT_SECRET` | YouTube OAuth client secret | (required) |
+
+**Example:**
+
+```bash
+# Enable debug output
+DEBUG=1 musync sync
+
+# Use custom data directory
+XDG_DATA_HOME=/custom/path musync sync
+```
