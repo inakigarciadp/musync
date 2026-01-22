@@ -1,9 +1,7 @@
 import { type Effect, Match } from "effect";
 import type { Format } from "../../domain/models/format";
-import type {
-  PlaylistListResponse,
-  TrackListResponse,
-} from "../../domain/models/youtube";
+import type { PlaylistListResponse } from "../../domain/models/youtube/playlist";
+import type { TrackListResponse } from "../../domain/models/youtube/tracks";
 import { formatPlaylistCompact, formatTrackCompact } from "./compact";
 import { formatJson } from "./json";
 import { formatPlaylistTable, formatTrackTable } from "./table";

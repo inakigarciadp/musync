@@ -1,8 +1,6 @@
 import { Console, Effect } from "effect";
-import type {
-  PlaylistListResponse,
-  TrackListResponse,
-} from "../../domain/models/youtube";
+import type { PlaylistListResponse } from "../../domain/models/youtube/playlist";
+import type { TrackListResponse } from "../../domain/models/youtube/tracks";
 import { bold, dim, formatDate, padRight, truncate } from "./utils";
 
 const TITLE_WIDTH = 35;
