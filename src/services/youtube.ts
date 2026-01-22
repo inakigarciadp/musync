@@ -13,7 +13,7 @@ import {
   YouTubeApiError,
   YouTubeNetworkError,
   YouTubeServiceUnavailableError,
-} from "../domain/errors/youtube-errors";
+} from "../domain/errors/youtube";
 import {
   type MaxResults,
   type PlaylistId,

@@ -26,7 +26,7 @@ import type {
   YouTubeApiError,
   YouTubeNetworkError,
   YouTubeServiceUnavailableError,
-} from "./youtube-errors";
+} from "./youtube";
 
 export class NotImplementedError extends Schema.TaggedError<NotImplementedError>()(
   "NotImplementedError",
