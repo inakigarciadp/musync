@@ -24,6 +24,41 @@ Topics include: services and layers, data modeling, error handling, configuratio
 **Effect Source Reference:** Use the btca subagent to search for real implementations when docs aren't enough.
 <!-- effect-solutions:end -->
 
+## Error Handling System
+
+The application uses a centralized, type-safe error handling system with Effect:
+
+### Key Concepts
+
+1. **AppError Union** (`src/domain/errors/index.ts`): All error types are combined into a single union type. This includes auth errors, YouTube errors, HTTP errors, CLI validation errors, and config errors.
+
+2. **Exhaustive Matching** (`src/presentation/error-presentation.ts`): Uses `Match.typeTags<AppError>()` for compile-time exhaustiveness checking. If you add a new error to the union, the compiler will force you to handle it.
+
+3. **No Per-Command Error Handling**: Commands should not catch errors. Let them bubble up to the entry point where the centralized handler formats them for users.
+
+4. **Exit Codes**: Use `CliExitError` class to carry exit codes through Effect's type system. The `cliTeardown` function extracts these codes for proper process exit.
+
+5. **Debug Mode**: Set `DEBUG=1` environment variable to show stack traces with `Cause.pretty()`.
+
+### When Adding New Errors
+
+1. Define the error in its domain file (e.g., `src/domain/errors/YouTubeErrors.ts`).
+2. Add it to the `AppError` union in `src/domain/errors/index.ts`.
+3. Add a handler case in `src/presentation/error-presentation.ts` (compiler will enforce this).
+4. Assign an appropriate exit code from the established convention.
+
+### Exit Code Convention
+
+| Code | Meaning |
+|-------|---------|
+| 0 | Success |
+| 1 | General error |
+| 2 | Authentication required |
+| 4 | Resource not found |
+| 5 | Rate limit exceeded |
+| 6 | Service unavailable |
+| 7 | Not implemented |
+
 ## Architecture overview
 
 This is the initial proposed project structure. It may evolve over time or depending on the specific needs. Try to follow it but don't be afraid to adapt as necessary.
@@ -57,11 +92,13 @@ src/
 │   │   ├── playlists.ts
 │   │   ├── tracks.ts
 │   │   └── status.ts
-│   ├── formatters/
-│   │   ├── table.ts
-│   │   ├── json.ts
-│   │   └── compact.ts
 │   └── index.ts
+├── presentation/
+│   ├── error-presentation.ts    # Centralized error formatting and exit codes
+│   └── formatters/
+│       ├── table.ts
+│       ├── json.ts
+│       └── compact.ts
 ├── services/
 │   ├── Auth.ts                    # OAuth token management
 │   ├── Config.ts                  # User preferences
@@ -92,6 +129,7 @@ src/
 │   │   ├── Config.ts
 │   │   └── Auth.ts
 │   └── errors/
+│       ├── index.ts                 # AppError union type (all error types)
 │       ├── AuthErrors.ts
 │       ├── DatabaseErrors.ts
 │       ├── DownloadErrors.ts
