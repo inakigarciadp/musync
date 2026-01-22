@@ -18,7 +18,7 @@ import {
   type StoredTokens,
   StoredTokensFromJson,
   TokenResponse,
-} from "../domain/models/Auth";
+} from "../domain/models/auth";
 import {
   generateCodeChallenge,
   generateCodeVerifier,

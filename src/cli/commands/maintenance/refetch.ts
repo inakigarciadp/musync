@@ -1,7 +1,7 @@
 import { Args, Command } from "@effect/cli";
 import { Effect } from "effect";
 import { NotImplementedError } from "../../../domain/errors";
-import { PlaylistId } from "../../../domain/models/Playlist";
+import { PlaylistId } from "../../../domain/models/playlist";
 
 export const refetchCommand = Command.make(
   "refetch",

@@ -1,6 +1,6 @@
 import { Effect, Schema } from "effect";
 import { PKCEGenerationError } from "../../domain/errors/auth-errors";
-import { CodeChallenge, CodeVerifier, State } from "../../domain/models/Auth";
+import { CodeChallenge, CodeVerifier, State } from "../../domain/models/auth";
 
 const base64UrlEncode = (buffer: Uint8Array): string => {
   let base64 = Buffer.from(buffer).toString("base64");

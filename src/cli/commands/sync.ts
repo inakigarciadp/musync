@@ -1,7 +1,7 @@
 import { Args, Command, Options } from "@effect/cli";
 import { Effect, Option } from "effect";
 import { NotImplementedError } from "../../domain/errors";
-import { PlaylistId } from "../../domain/models/Playlist";
+import { PlaylistId } from "../../domain/models/playlist";
 
 const dryRunOption = Options.boolean("dry-run").pipe(
   Options.withAlias("d"),
