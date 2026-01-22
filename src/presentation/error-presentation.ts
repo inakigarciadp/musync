@@ -208,9 +208,9 @@ const formatError: (error: AppError) => FormattedError =
     }),
 
     // Config errors (from effect) - _tag is "ConfigError", _op distinguishes variants
-    ConfigError: () => ({
+    ConfigError: (e) => ({
       title: "Configuration error",
-      message: "A configuration error occurred.",
+      message: `A configuration error occurred: ${e.message}`,
       exitCode: 1,
     }),
   });
