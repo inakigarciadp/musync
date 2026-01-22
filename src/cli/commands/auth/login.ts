@@ -20,7 +20,15 @@ export const loginCommand = Command.make("login", {}, () =>
 
     const { server, port } = yield* startCallbackServer(queue).pipe(
       Effect.catchTag("ServerStartError", (error) =>
-        Effect.die(`Failed to start callback server: ${error}`),
+        Effect.gen(function* () {
+          yield* Console.error(
+            `Failed to start OAuth callback server: ${error.error}`,
+          );
+          yield* Console.error(
+            "Please ensure port 3000 is available or check your firewall settings.",
+          );
+          return yield* Effect.fail(new Error("Server start failed"));
+        }),
       ),
     );
 
@@ -61,7 +69,10 @@ export const loginCommand = Command.make("login", {}, () =>
 
     const code = yield* waitForAuthCode(queue, 120000).pipe(
       Effect.catchTag("AuthTimeoutError", (error) =>
-        Effect.die(`Authorization timed out after ${error.timeoutMs}ms`),
+        Effect.gen(function* () {
+          yield* Console.error("Authorization timed out. Please try again.");
+          return yield* Effect.fail(new Error("Authorization timed out"));
+        }),
       ),
     );
 
