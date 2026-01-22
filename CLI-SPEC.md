@@ -45,6 +45,14 @@ Revoke tokens, delete credentials.
 Show authentication state.
 
 * Displays: authentication status, token expiry time, time until expiry
+* Automatic refresh: tokens are automatically refreshed when expiring within 5 minutes
+
+#### `musync auth refresh`
+
+Manually force refresh the access token.
+
+* Useful when you want to ensure a fresh token before operations
+* Updates stored credentials with new access token
 
 ---
 
@@ -101,7 +109,7 @@ List **all** playlists from API.
 
 * Shows tracked status with checkmark
 * Includes video counts
-* Options: `--tracked`, `--format json|table`
+* Options: `--tracked`, `--format json|table|compact`, `--all` (fetch all ignoring pagination)
 
 #### `musync tracks PLxxx`
 
@@ -113,7 +121,8 @@ Show tracks in a playlist.
   * `--downloaded`
   * `--missing`
   * `--limit N`
-  * `--format json|table`
+  * `--all` (fetch all ignoring pagination)
+  * `--format json|table|compact`
 
 #### `musync status`
 

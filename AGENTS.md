@@ -59,7 +59,8 @@ src/
 │   │   ├── auth/
 │   │   │   ├── login.ts
 │   │   │   ├── logout.ts
-│   │   │   └── status.ts
+│   │   │   ├── status.ts
+│   │   │   └── refresh.ts
 │   │   ├── config/
 │   │   │   ├── set.ts
 │   │   │   ├── show.ts
@@ -140,9 +141,10 @@ src/
 
 ## Implementation status
 
-- `auth login` - OAuth2 PKCE flow with Youtube API v3.
+- `auth login` - OAuth2 PKCE flow with Youtube API v3. Automatic token refresh when token expires within 5 minutes.
 - `auth logout` - Removes stored authentication tokens.
+- `auth refresh` - Manually force refresh the access token.
 - `auth status` - Shows authentication state and token expiry.
-- `playlists` - Lists the playlists associated to the auth'd user. Supports pagination via `--page-token` and limits via `--limit` (1-50, default 20) and output formatting via `--format` (json|table|compact). The and `--tracked` flag is not implemented yet.
-- `tracks` - Lists tracks from a YouTube playlist. Requires `playlist-id` argument. Supports pagination via `--page-token`, limits via `--limit` (1-50, default 20), and output formatting via `--format` (json|table|compact). The `--downloaded` and `--missing` flags are not implemented yet.
+- `playlists` - Lists the playlists associated to the auth'd user. Supports pagination via `--page-token`, limits via `--limit` (1-50, default 20), output formatting via `--format` (json|table|compact), and `--all` flag to fetch all playlists ignoring pagination. The `--tracked` flag is not implemented yet.
+- `tracks` - Lists tracks from a YouTube playlist. Requires `playlist-id` argument. Supports pagination via `--page-token`, limits via `--limit` (1-50, default 20), output formatting via `--format` (json|table|compact), and `--all` flag to fetch all tracks ignoring pagination. The `--downloaded` and `--missing` flags are not implemented yet.
 - All other commands - stubs

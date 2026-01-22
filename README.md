@@ -48,8 +48,9 @@ musync sync
 
 ### Inspection & Auth
 
-* `auth [login|logout|status]`: Manage YouTube API credentials.
-* `tracks <id>`: List tracks within a specific playlist.
+* `auth [login|logout|refresh|status]`: Manage YouTube API credentials.
+* `playlists`: List all your YouTube playlists.
+* `tracks <playlistId>`: List tracks within a specific playlist.
 * `status`: Summary of library size, auth state, and pending downloads.
 
 ### Maintenance
