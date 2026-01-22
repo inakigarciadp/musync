@@ -8,6 +8,12 @@ const layers = Layer.merge(AppLayer, BunContext.layer)
 
 BunRuntime.runMain(
   Command.run(musyncCommand, { name: "musync", version: "0.1.0" })(process.argv).pipe(
-    Effect.provide(layers)
+    Effect.provide(layers),
+    Effect.catchAllDefect((defect) =>
+      Effect.gen(function* () {
+        yield* Effect.logError("Unexpected error occurred", defect);
+        return yield* Effect.die(defect);
+      })
+    )
   )
 )
