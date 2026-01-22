@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import type { HttpClientError } from "@effect/platform";
 import {
   HttpClient,
@@ -132,14 +133,6 @@ export class AuthService extends Context.Tag("@app/AuthService")<
       const storeTokens = Effect.fn("AuthService.storeTokens")(
         (tokens: StoredTokens) =>
           Effect.gen(function* () {
-            const fs = (yield* Effect.tryPromise({
-              try: () => import("node:fs/promises"),
-              catch: (error) =>
-                TokenStorageError.make({
-                  reason: `Failed to import fs/promises: ${error}`,
-                }),
-            })) as typeof import("node:fs/promises");
-
             const json = yield* Schema.encode(StoredTokensFromJson)(tokens);
 
             yield* Effect.tryPromise({
@@ -156,14 +149,6 @@ export class AuthService extends Context.Tag("@app/AuthService")<
       );
 
       const loadTokens = Effect.gen(function* () {
-        const fs = (yield* Effect.tryPromise({
-          try: () => import("node:fs/promises"),
-          catch: (error) =>
-            TokenStorageError.make({
-              reason: `Failed to import fs/promises: ${error}`,
-            }),
-        })) as typeof import("node:fs/promises");
-
         const content = yield* Effect.tryPromise({
           try: () => fs.readFile(tokenStoragePath, "utf-8"),
           catch: (error) =>
@@ -183,14 +168,6 @@ export class AuthService extends Context.Tag("@app/AuthService")<
       );
 
       const clearTokens = Effect.gen(function* () {
-        const fs = (yield* Effect.tryPromise({
-          try: () => import("node:fs/promises"),
-          catch: (error) =>
-            TokenStorageError.make({
-              reason: `Failed to import fs/promises: ${error}`,
-            }),
-        })) as typeof import("node:fs/promises");
-
         yield* Effect.tryPromise({
           try: () => fs.unlink(tokenStoragePath),
           catch: (error) =>
