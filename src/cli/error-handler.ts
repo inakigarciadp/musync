@@ -1,5 +1,5 @@
 import type { Teardown } from "@effect/platform/Runtime";
-import { Cause, Chunk, Console, Effect, Exit, Match } from "effect";
+import { Cause, Console, Effect, Exit, Match } from "effect";
 import type { AppError } from "../domain/errors";
 
 // ANSI color codes
