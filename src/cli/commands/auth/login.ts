@@ -98,7 +98,6 @@ export const loginCommand = Command.make("login", {}, () =>
     yield* Console.log("Authentication successful! Tokens stored.");
 
     yield* stopCallbackServer(server);
-
     return storedTokens;
   }),
 ).pipe(

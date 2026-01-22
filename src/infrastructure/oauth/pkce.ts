@@ -1,5 +1,6 @@
-import { Effect } from "effect";
+import { Effect, Schema } from "effect";
 import { PKCEGenerationError } from "../../domain/errors/auth-errors";
+import { CodeChallenge, CodeVerifier, State } from "../../domain/models/Auth";
 
 const base64UrlEncode = (buffer: Uint8Array): string => {
   let base64 = Buffer.from(buffer).toString("base64");
@@ -18,14 +19,15 @@ export const generateCodeVerifier = Effect.fn("generateCodeVerifier")(
           reason: `Failed to generate random bytes: ${error}`,
         }),
     });
-    return base64UrlEncode(bytes);
+    const plainValue = base64UrlEncode(bytes);
+    return yield* Schema.decodeUnknown(CodeVerifier)(plainValue);
   },
 );
 
 export const generateCodeChallenge = Effect.fn("generateCodeChallenge")(
-  function* (verifier: string) {
+  function* (verifier: CodeVerifier) {
     const encoder = new TextEncoder();
-    const data = encoder.encode(verifier);
+    const data = encoder.encode(String(verifier));
     const hash = yield* Effect.tryPromise({
       try: () => crypto.subtle.digest("SHA-256", data) as Promise<ArrayBuffer>,
       catch: (error) =>
@@ -33,10 +35,12 @@ export const generateCodeChallenge = Effect.fn("generateCodeChallenge")(
           reason: `Failed to generate SHA-256 hash: ${error}`,
         }),
     });
-    return base64UrlEncode(new Uint8Array(hash));
+    const plainValue = base64UrlEncode(new Uint8Array(hash));
+    return yield* Schema.decodeUnknown(CodeChallenge)(plainValue);
   },
 );
 
 export const generateState = Effect.fn("generateState")(function* () {
-  return crypto.randomUUID();
+  const plainValue = crypto.randomUUID();
+  return yield* Schema.decodeUnknown(State)(plainValue);
 });

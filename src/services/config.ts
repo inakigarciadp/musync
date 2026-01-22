@@ -24,7 +24,7 @@ export class ConfigService extends Context.Tag("@app/ConfigService")<
         "GOOGLE_CLIENT_SECRET",
         Schema.Redacted(Schema.String.pipe(Schema.minLength(1))),
       );
-      const dataDir = yield* getAppDataDir;
+      const dataDir = yield* getAppDataDir();
 
       return ConfigService.of({
         clientId,
