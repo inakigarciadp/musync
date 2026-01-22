@@ -1,6 +1,7 @@
 import { Command } from "@effect/cli";
 import { loginCommand } from "./commands/auth/login";
 import { logoutCommand } from "./commands/auth/logout";
+import { authRefreshCommand } from "./commands/auth/refresh";
 import { authStatusCommand } from "./commands/auth/status";
 import { configResetCommand } from "./commands/config/reset";
 import { configSetCommand } from "./commands/config/set";
@@ -21,7 +22,12 @@ import { syncCommand } from "./commands/sync";
 import { tracksCommand } from "./commands/tracks";
 
 const authCommand = Command.make("auth", {}).pipe(
-  Command.withSubcommands([loginCommand, logoutCommand, authStatusCommand]),
+  Command.withSubcommands([
+    loginCommand,
+    logoutCommand,
+    authStatusCommand,
+    authRefreshCommand,
+  ]),
 );
 
 const configCommand = Command.make("config", {}).pipe(
