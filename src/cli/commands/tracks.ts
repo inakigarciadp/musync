@@ -1,22 +1,9 @@
 import { Args, Command, Options } from "@effect/cli";
-import { Effect } from "effect";
-import { NotImplementedError } from "../../domain/errors";
-import { PlaylistId } from "../../domain/models/playlist";
-
-const downloadedOption = Options.boolean("downloaded").pipe(
-  Options.withAlias("d"),
-  Options.withDescription("Show only downloaded tracks"),
-);
-
-const missingOption = Options.boolean("missing").pipe(
-  Options.withAlias("m"),
-  Options.withDescription("Show only missing tracks"),
-);
-
-const limitOption = Options.integer("limit").pipe(
-  Options.withDescription("Limit number of results"),
-  Options.optional,
-);
+import { Effect, Option } from "effect";
+import { FormatSchema } from "../../domain/models/format";
+import { MaxResults, PlaylistId } from "../../domain/models/youtube";
+import { formatTracks } from "../../presentation/formatters";
+import { YouTubeService } from "../../services/youtube";
 
 const formatOption = Options.choice("format", [
   "json",
@@ -26,6 +13,19 @@ const formatOption = Options.choice("format", [
   Options.withAlias("f"),
   Options.withDescription("Output format"),
   Options.withDefault("table"),
+  Options.withSchema(FormatSchema),
+);
+
+const pageTokenOption = Options.text("page-token").pipe(
+  Options.withDescription("Pagination token to fetch next page"),
+  Options.optional,
+);
+
+const limitOption = Options.integer("limit").pipe(
+  Options.withAlias("l"),
+  Options.withDescription("Number of results per page (1-50)"),
+  Options.withDefault(20),
+  Options.withSchema(MaxResults),
 );
 
 export const tracksCommand = Command.make(
@@ -35,21 +35,14 @@ export const tracksCommand = Command.make(
       Args.withSchema(PlaylistId),
       Args.withDescription("YouTube playlist ID"),
     ),
-    downloaded: downloadedOption,
-    missing: missingOption,
-    limit: limitOption,
     format: formatOption,
+    pageToken: pageTokenOption,
+    limit: limitOption,
   },
-  Effect.fnUntraced(function* ({
-    playlistId,
-    downloaded,
-    missing,
-    limit,
-    format,
-  }) {
-    yield* Effect.logInfo("Tracks listing not yet implemented");
-    return yield* NotImplementedError.make({
-      command: "musync tracks",
-    });
+  Effect.fnUntraced(function* ({ playlistId, format, pageToken, limit }) {
+    const youtube = yield* YouTubeService;
+    const token = Option.getOrElse(pageToken, () => undefined);
+    const response = yield* youtube.listPlaylistItems(playlistId, token, limit);
+    yield* formatTracks(response, format);
   }),
-).pipe(Command.withDescription("Show tracks in playlist"));
+).pipe(Command.withDescription("List tracks from a playlist"));
