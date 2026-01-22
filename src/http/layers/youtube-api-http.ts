@@ -1,0 +1,33 @@
+import { HttpClient, HttpClientRequest } from "@effect/platform";
+import { Effect, Layer, pipe } from "effect";
+import type { ParseError } from "effect/ParseResult";
+import { AuthService } from "../../services/auth";
+
+export const YouTubeApiHttpClientLive = Layer.effect(
+  HttpClient.HttpClient,
+  Effect.gen(function* () {
+    const auth = yield* AuthService;
+    const baseClient = yield* HttpClient.HttpClient;
+
+    return pipe(
+      baseClient,
+      HttpClient.mapRequestEffect((request) =>
+        Effect.gen(function* () {
+          const tokens = yield* auth.loadTokens().pipe(
+            Effect.catchTags({
+              TokenStorageError: () => Effect.succeed(null),
+              ParseError: () => Effect.succeed(null),
+            }),
+          );
+          if (!tokens) {
+            return request;
+          }
+          return pipe(
+            request,
+            HttpClientRequest.bearerToken(tokens.accessToken),
+          );
+        }),
+      ),
+    );
+  }),
+);
