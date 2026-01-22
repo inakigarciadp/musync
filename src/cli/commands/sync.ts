@@ -1,6 +1,7 @@
 import { Args, Command, Options } from "@effect/cli";
-import { Effect } from "effect";
+import { Effect, Option, Schema } from "effect";
 import { NotImplementedError } from "../../domain/errors";
+import { PlaylistId } from "../../domain/models/Playlist";
 
 const dryRunOption = Options.boolean("dry-run").pipe(
   Options.withAlias("d"),
@@ -23,6 +24,7 @@ const downloadOnlyOption = Options.boolean("download-only").pipe(
 );
 
 const playlistId = Args.text({ name: "playlistId" })
+  .pipe(Args.withSchema(PlaylistId))
   .pipe(Args.optional)
   .pipe(
     Args.withDescription(
@@ -41,8 +43,8 @@ export const syncCommand = Command.make(
   },
   ({ playlistId, dryRun, force, metadataOnly, downloadOnly }) =>
     Effect.gen(function* () {
-      if (playlistId) {
-        yield* Effect.logInfo(`Syncing playlist: ${playlistId}`);
+      if (Option.isSome(playlistId)) {
+        yield* Effect.logInfo(`Syncing playlist: ${playlistId.value}`);
         yield* Effect.logInfo("Playlist sync not yet implemented");
         return yield* NotImplementedError.make({ command: "musync sync" });
       } else {
