@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { BrowserOpenError } from "../../domain/errors/auth-errors";
+import { BrowserOpenError } from "../../domain/errors/auth";
 
 const getBrowserCommand = (): string[] => {
   const platform = process.platform;

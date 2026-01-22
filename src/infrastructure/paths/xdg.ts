@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import { Config, Effect } from "effect";
-import { FileSystemError } from "../../domain/errors/auth-errors";
+import { FileSystemError } from "../../domain/errors/auth";
 
 export const getDataHome = Effect.fn("getDataHome")(function* () {
   const xdgDataHome = yield* Config.string("XDG_DATA_HOME").pipe(
