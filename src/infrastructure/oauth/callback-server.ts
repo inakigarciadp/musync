@@ -46,7 +46,10 @@ export const acquireCallbackServer: Effect.Effect<
   ServerStartError,
   Scope.Scope
 > = Effect.gen(function* () {
-  const queue = yield* Queue.unbounded<string>();
+  const queue = yield* Effect.acquireRelease(Queue.unbounded<string>(), (q) =>
+    Queue.shutdown(q),
+  );
+
   const serverLayer = BunHttpServer.layer({ port: 0 });
 
   const router = HttpRouter.empty.pipe(
