@@ -213,58 +213,60 @@ const formatError: (error: AppError) => FormattedError =
  * Handles application errors by displaying a user-friendly message
  * and failing with a CliExitError containing the appropriate exit code.
  */
-export const handleCliError = (error: AppError) =>
-  Effect.gen(function* () {
-    const debug = yield* Config.boolean("DEBUG").pipe(
-      Config.orElse(() => Config.succeed(false)),
-    );
-    const formatted = formatError(error);
+export const handleCliError = Effect.fn("handleCliError")(function* (
+  error: AppError,
+) {
+  const debug = yield* Config.boolean("DEBUG").pipe(
+    Config.orElse(() => Config.succeed(false)),
+  );
+  const formatted = formatError(error);
 
+  yield* Console.error("");
+  yield* Console.error(red(`Error: ${formatted.title}`));
+
+  if (formatted.message) {
+    yield* Console.error(formatted.message);
+  }
+
+  if (formatted.suggestion) {
     yield* Console.error("");
-    yield* Console.error(red(`Error: ${formatted.title}`));
+    yield* Console.error(dim(formatted.suggestion));
+  }
 
-    if (formatted.message) {
-      yield* Console.error(formatted.message);
-    }
+  yield* Console.error("");
 
-    if (formatted.suggestion) {
-      yield* Console.error("");
-      yield* Console.error(dim(formatted.suggestion));
-    }
+  // Show stack trace in debug mode
+  if (debug) {
+    yield* Console.error(dim("Stack trace:"));
+    yield* Console.error(dim(Cause.pretty(Cause.fail(error))));
+  }
 
-    yield* Console.error("");
-
-    // Show stack trace in debug mode
-    if (debug) {
-      yield* Console.error(dim("Stack trace:"));
-      yield* Console.error(dim(Cause.pretty(Cause.fail(error))));
-    }
-
-    // Fail with CliExitError - the custom teardown will extract the exit code
-    return yield* Effect.fail(new CliExitError(formatted.exitCode));
-  });
+  // Fail with CliExitError - the custom teardown will extract the exit code
+  return yield* Effect.fail(new CliExitError(formatted.exitCode));
+});
 
 /**
  * Handles unexpected defects (programming errors, uncaught exceptions).
  */
-export const handleDefect = (defect: unknown) =>
-  Effect.gen(function* () {
-    const debug = yield* Config.boolean("DEBUG").pipe(
-      Config.orElse(() => Config.succeed(false)),
-    );
-    yield* Console.error("");
-    yield* Console.error(red("Error: Unexpected error occurred"));
+export const handleDefect = Effect.fn("handleDefect")(function* (
+  defect: unknown,
+) {
+  const debug = yield* Config.boolean("DEBUG").pipe(
+    Config.orElse(() => Config.succeed(false)),
+  );
+  yield* Console.error("");
+  yield* Console.error(red("Error: Unexpected error occurred"));
 
-    if (debug) {
-      yield* Console.error(dim("Stack trace:"));
-      yield* Console.error(dim(Cause.pretty(Cause.die(defect))));
-    } else {
-      yield* Console.error(dim("Set DEBUG=1 for more details."));
-    }
+  if (debug) {
+    yield* Console.error(dim("Stack trace:"));
+    yield* Console.error(dim(Cause.pretty(Cause.die(defect))));
+  } else {
+    yield* Console.error(dim("Set DEBUG=1 for more details."));
+  }
 
-    yield* Console.error("");
-    return yield* Effect.fail(new CliExitError(1));
-  });
+  yield* Console.error("");
+  return yield* Effect.fail(new CliExitError(1));
+});
 
 /**
  * Custom teardown that extracts exit codes from CliExitError.
