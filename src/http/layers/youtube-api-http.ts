@@ -1,5 +1,5 @@
 import { HttpClient, HttpClientRequest } from "@effect/platform";
-import { Effect, Layer, pipe } from "effect";
+import { Effect, Layer, Option, pipe } from "effect";
 import { AuthService } from "../../services/auth";
 
 const YOUTUBE_API_BASE_URL = "https://www.googleapis.com/youtube/v3";
@@ -17,18 +17,13 @@ export const YouTubeApiHttpClientLive = Layer.effect(
       HttpClient.filterStatusOk,
       HttpClient.mapRequestEffect(
         Effect.fnUntraced(function* (request) {
-          const tokens = yield* auth.loadTokens().pipe(
-            Effect.catchTags({
-              TokenStorageError: () => Effect.succeed(null),
-              ParseError: () => Effect.succeed(null),
-            }),
-          );
-          if (!tokens) {
+          const accessToken = yield* Effect.option(auth.getAccessToken());
+          if (Option.isNone(accessToken)) {
             return request;
           }
           return pipe(
             request,
-            HttpClientRequest.bearerToken(tokens.accessToken),
+            HttpClientRequest.bearerToken(accessToken.value),
           );
         }),
       ),
