@@ -4,29 +4,13 @@
 
 # Developer guide
 
-There is no build command in this project. Just run `bun index.ts <command>`.
+There is no build command in this project. Just run `bun index.ts <command>`. This project uses bun for everything. It also uses the Effect TS library for composable runtime effects.
 
 If you need to learn about the Youtube API, search for links in the official [Youtube Data API v3](https://developers.google.com/youtube/v3/docs) documentation.
 
 Use kebab-case for TypeScript files.
 
 If you run into an error loop, look at existing patterns and implementations to see how are we doing things. If that does not work, use the btca subagent to ask for help.
-
-# Project musync
-
-This project uses bun for everything.
-
-This project uses Effect for type-safe, composable runtime effects.
-
-## Effect Best Practices
-
-<!-- effect-solutions:start -->
-**Before implementing Effect features**, run `effect-solutions list` and read the relevant guide.
-
-Topics include: services and layers, data modeling, error handling, configuration, testing, HTTP clients, CLIs, observability, and project structure.
-
-**Effect Source Reference:** Use the btca subagent to search for real implementations when docs aren't enough.
-<!-- effect-solutions:end -->
 
 ## Error Handling System
 
