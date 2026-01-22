@@ -1,8 +1,8 @@
 import { Effect } from "effect";
 import { BrowserOpenError } from "../../domain/errors/auth-errors";
 
-export const openBrowser = (url: string) =>
-  Effect.tryPromise({
+export const openBrowser = Effect.fn("openBrowser")(function* (url: string) {
+  return yield* Effect.tryPromise({
     try: () =>
       Bun.spawn(["open", url], {
         stdout: "pipe",
@@ -14,3 +14,4 @@ export const openBrowser = (url: string) =>
       }),
     catch: (error) => BrowserOpenError.make({ url, error }),
   });
+});
