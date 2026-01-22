@@ -3,7 +3,7 @@ import { BunContext, BunRuntime } from "@effect/platform-bun"
 import { Effect, Layer } from "effect"
 import { AppLayer } from "./src/layers"
 import { musyncCommand } from "./src/cli"
-import { cliTeardown, handleCliError, handleDefect } from "./src/cli/error-handler"
+import { cliTeardown, handleCliError, handleDefect } from "./src/presentation/error-presentation"
 import type { AppError } from "./src/domain/errors"
 
 const layers = Layer.merge(AppLayer, BunContext.layer)
