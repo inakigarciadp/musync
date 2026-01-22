@@ -16,7 +16,6 @@ import {
   PKCEPair,
   type StoredTokens,
   StoredTokensFromJson,
-  StoredTokensToJson,
   TokenResponse,
 } from "../domain/models/Auth";
 import {
@@ -86,23 +85,22 @@ export class AuthService extends Context.Tag("@app/AuthService")<
           codeChallenge: string;
           state: string;
           redirectUri: string;
-        }) =>
-          Effect.gen(function* () {
-            const clientId = config.clientId;
-            const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-            url.searchParams.set("client_id", clientId);
-            url.searchParams.set("redirect_uri", params.redirectUri);
-            url.searchParams.set(
-              "scope",
-              "https://www.googleapis.com/auth/youtube.readonly",
-            );
-            url.searchParams.set("response_type", "code");
-            url.searchParams.set("access_type", "offline");
-            url.searchParams.set("code_challenge", params.codeChallenge);
-            url.searchParams.set("code_challenge_method", "S256");
-            url.searchParams.set("state", params.state);
-            return url.toString();
-          }),
+        }) => {
+          const clientId = config.clientId;
+          const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+          url.searchParams.set("client_id", clientId);
+          url.searchParams.set("redirect_uri", params.redirectUri);
+          url.searchParams.set(
+            "scope",
+            "https://www.googleapis.com/auth/youtube.readonly",
+          );
+          url.searchParams.set("response_type", "code");
+          url.searchParams.set("access_type", "offline");
+          url.searchParams.set("code_challenge", params.codeChallenge);
+          url.searchParams.set("code_challenge_method", "S256");
+          url.searchParams.set("state", params.state);
+          return Effect.succeed(url.toString());
+        },
       );
 
       const exchangeCodeForTokens = Effect.fn(

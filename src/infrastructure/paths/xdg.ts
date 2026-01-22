@@ -1,5 +1,5 @@
+import fs from "node:fs/promises";
 import { Config, Effect } from "effect";
-import fs from "fs/promises";
 import { FileSystemError } from "../../domain/errors/auth-errors";
 
 export const getDataHome = Effect.fn("getDataHome")(function* () {
