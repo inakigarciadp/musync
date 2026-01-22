@@ -8,6 +8,10 @@
     "prepare": "effect-language-service patch"
   },
   "dependencies": {
+    "@effect/cli": "^0.73.0",
+    "@effect/platform": "^0.94.1",
+    "@effect/platform-bun": "^0.87.0",
+    "@effect/typeclass": "^0.38.0",
     "effect": "^3.19.14"
   },
   "devDependencies": {
