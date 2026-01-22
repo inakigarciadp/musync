@@ -1,4 +1,4 @@
-import { Command, Args } from "@effect/cli";
+import { Args, Command } from "@effect/cli";
 import { Effect } from "effect";
 import { NotImplementedError } from "../../../domain/errors";
 
