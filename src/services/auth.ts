@@ -44,6 +44,7 @@ export class AuthService extends Context.Tag("@app/AuthService")<
       tokens: StoredTokens,
     ) => Effect.Effect<void, TokenStorageError>;
     readonly loadTokens: Effect.Effect<StoredTokens | null, TokenStorageError>;
+    readonly clearTokens: Effect.Effect<void, TokenStorageError>;
   }
 >() {
   static readonly layer = Layer.effect(
@@ -156,12 +157,35 @@ export class AuthService extends Context.Tag("@app/AuthService")<
         });
       }).pipe(Effect.catchAll(() => Effect.succeed(null)));
 
+      const clearTokens = Effect.gen(function* () {
+        const fs = (yield* Effect.tryPromise({
+          try: () => import("node:fs/promises"),
+          catch: (error) =>
+            TokenStorageError.make({
+              reason: `Failed to import fs/promises: ${error}`,
+            }),
+        })) as typeof import("node:fs/promises");
+
+        yield* Effect.tryPromise({
+          try: () => fs.unlink(tokenStoragePath),
+          catch: (error) =>
+            TokenStorageError.make({
+              reason: `Failed to delete tokens: ${error}`,
+            }),
+        });
+      }).pipe(
+        Effect.catchTag("TokenStorageError", (error) =>
+          error.reason.includes("ENOENT") ? Effect.void : Effect.fail(error),
+        ),
+      );
+
       return AuthService.of({
         generatePKCEPair,
         buildAuthorizationUrl,
         exchangeCodeForTokens,
         storeTokens,
         loadTokens,
+        clearTokens,
       });
     }),
   );

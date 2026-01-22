@@ -1,10 +1,18 @@
 import { Command } from "@effect/cli";
-import { Effect } from "effect";
-import { NotImplementedError } from "../../../domain/errors";
+import { Console, Effect } from "effect";
+import { AuthService } from "../../../services/auth";
 
 export const logoutCommand = Command.make("logout", {}, () =>
   Effect.gen(function* () {
-    yield* Effect.logInfo("Token revocation not yet implemented");
-    return yield* NotImplementedError.make({ command: "musync auth logout" });
+    const auth = yield* AuthService;
+    const tokens = yield* auth.loadTokens;
+
+    if (tokens === null) {
+      yield* Console.log("Already logged out.");
+    } else {
+      yield* Console.log("Logging out...");
+      yield* auth.clearTokens;
+      yield* Console.log("Successfully logged out. Tokens removed.");
+    }
   }),
-).pipe(Command.withDescription("Revoke tokens"));
+).pipe(Command.withDescription("Remove stored authentication tokens"));
