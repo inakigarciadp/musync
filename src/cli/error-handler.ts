@@ -1,5 +1,5 @@
 import type { Teardown } from "@effect/platform/Runtime";
-import { Cause, Console, Effect, Exit, Match } from "effect";
+import { Cause, Chunk, Console, Effect, Exit, Match } from "effect";
 import type { AppError } from "../domain/errors";
 
 // ANSI color codes
@@ -234,7 +234,7 @@ export const handleCliError = (error: AppError) =>
     // Show stack trace in debug mode
     if (process.env.DEBUG) {
       yield* Console.error(dim("Stack trace:"));
-      yield* Console.error(dim(String(error)));
+      yield* Console.error(dim(Cause.pretty(Cause.fail(error))));
     }
 
     // Fail with CliExitError - the custom teardown will extract the exit code
@@ -250,7 +250,8 @@ export const handleDefect = (defect: unknown) =>
     yield* Console.error(red("Error: Unexpected error occurred"));
 
     if (process.env.DEBUG) {
-      yield* Console.error(dim(String(defect)));
+      yield* Console.error(dim("Stack trace:"));
+      yield* Console.error(dim(Cause.pretty(Cause.die(defect))));
     } else {
       yield* Console.error(dim("Set DEBUG=1 for more details."));
     }
