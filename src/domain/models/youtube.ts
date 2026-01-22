@@ -72,7 +72,10 @@ export type Position = typeof Position.Type;
 export class TrackSnippet extends Schema.Class<TrackSnippet>("TrackSnippet")({
   title: Schema.String,
   publishedAt: Schema.Date, // When added to playlist
-  channelTitle: Schema.String, // Uploader name
+  channelId: Schema.optional(Schema.String), // Playlist owner channel ID
+  channelTitle: Schema.optional(Schema.String), // Playlist owner channel title
+  videoOwnerChannelId: Schema.optional(Schema.String), // Video uploader channel ID
+  videoOwnerChannelTitle: Schema.optional(Schema.String), // Video uploader channel title
   playlistId: PlaylistId,
   position: Position,
 }) {}

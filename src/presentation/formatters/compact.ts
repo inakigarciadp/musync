@@ -49,7 +49,7 @@ export const formatTrackCompact = Effect.fnUntraced(function* (
     if (!track) continue;
     const pos = track.snippet.position + 1;
     const title = track.snippet.title;
-    const channel = track.snippet.channelTitle;
+    const channel = track.snippet.videoOwnerChannelTitle ?? "Unknown";
     const date = formatDate(track.snippet.publishedAt);
     const videoId = track.contentDetails.videoId;
 
