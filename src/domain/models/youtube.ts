@@ -9,11 +9,26 @@ export const VideoCount = Schema.Int.pipe(
 );
 export type VideoCount = typeof VideoCount.Type;
 
-export class Playlist extends Schema.Class<Playlist>("Playlist")({
-  id: PlaylistId,
+export class PlaylistSnippet extends Schema.Class<PlaylistSnippet>(
+  "PlaylistSnippet",
+)({
   title: Schema.String,
   publishedAt: Schema.Date,
+  description: Schema.optional(Schema.String),
+}) {}
+
+export class PlaylistContentDetails extends Schema.Class<PlaylistContentDetails>(
+  "PlaylistContentDetails",
+)({
   itemCount: VideoCount,
+}) {}
+
+export class Playlist extends Schema.Class<Playlist>("Playlist")({
+  kind: Schema.optional(Schema.String),
+  etag: Schema.optional(Schema.String),
+  id: PlaylistId,
+  snippet: PlaylistSnippet,
+  contentDetails: PlaylistContentDetails,
 }) {
   get url(): string {
     return `https://www.youtube.com/playlist?list=${this.id}`;
