@@ -40,16 +40,27 @@ export const syncCommand = Command.make(
     metadataOnly: metadataOnlyOption,
     downloadOnly: downloadOnlyOption,
   },
-  ({ playlistId, dryRun, force, metadataOnly, downloadOnly }) =>
-    Effect.gen(function* () {
-      if (Option.isSome(playlistId)) {
-        yield* Effect.logInfo(`Syncing playlist: ${playlistId.value}`);
-        yield* Effect.logInfo("Playlist sync not yet implemented");
-        return yield* NotImplementedError.make({ command: "musync sync" });
-      } else {
-        yield* Effect.logInfo("Syncing all playlists");
-        yield* Effect.logInfo("Sync not yet implemented");
-        return yield* NotImplementedError.make({ command: "musync sync" });
-      }
-    }),
+  Effect.fnUntraced(function* ({
+    playlistId,
+    dryRun,
+    force,
+    metadataOnly,
+    downloadOnly,
+  }: {
+    playlistId: Option.Option<string>;
+    dryRun: boolean;
+    force: boolean;
+    metadataOnly: boolean;
+    downloadOnly: boolean;
+  }) {
+    if (Option.isSome(playlistId)) {
+      yield* Effect.logInfo(`Syncing playlist: ${playlistId.value}`);
+      yield* Effect.logInfo("Playlist sync not yet implemented");
+      return yield* NotImplementedError.make({ command: "musync sync" });
+    } else {
+      yield* Effect.logInfo("Syncing all playlists");
+      yield* Effect.logInfo("Sync not yet implemented");
+      return yield* NotImplementedError.make({ command: "musync sync" });
+    }
+  }),
 ).pipe(Command.withDescription("Fetch metadata and download new tracks"));

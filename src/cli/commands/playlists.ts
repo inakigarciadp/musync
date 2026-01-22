@@ -2,7 +2,7 @@ import { Command, Options } from "@effect/cli";
 import { Effect, Option } from "effect";
 import { FormatSchema } from "../../domain/models/format";
 import { MaxResults } from "../../domain/models/youtube";
-import { type Format, formatPlaylists } from "../../presentation/formatters";
+import { formatPlaylists } from "../../presentation/formatters";
 import { YouTubeService } from "../../services/youtube";
 
 const trackedOption = Options.boolean("tracked").pipe(
@@ -41,12 +41,11 @@ export const playlistsCommand = Command.make(
     pageToken: pageTokenOption,
     limit: limitOption,
   },
-  ({ tracked, format, pageToken, limit }) =>
-    Effect.gen(function* () {
-      const youtube = yield* YouTubeService;
-      const token = Option.getOrElse(pageToken, () => undefined);
-      const response = yield* youtube.listPlaylists(token, limit);
+  Effect.fnUntraced(function* ({ tracked, format, pageToken, limit }) {
+    const youtube = yield* YouTubeService;
+    const token = Option.getOrElse(pageToken, () => undefined);
+    const response = yield* youtube.listPlaylists(token, limit);
 
-      yield* formatPlaylists(response, format);
-    }),
+    yield* formatPlaylists(response, format);
+  }),
 ).pipe(Command.withDescription("List all playlists from API"));
