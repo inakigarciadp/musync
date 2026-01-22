@@ -1,5 +1,5 @@
 import { Args, Command, Options } from "@effect/cli";
-import { Effect, Schema } from "effect";
+import { Effect } from "effect";
 import { NotImplementedError } from "../../domain/errors";
 import { PlaylistId } from "../../domain/models/Playlist";
 
