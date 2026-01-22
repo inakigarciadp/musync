@@ -6,6 +6,8 @@ If you need to learn about the Youtube API, search for links in the official [Yo
 
 Use kebab-case for TypeScript files.
 
+If you run into an error loop, look at existing patterns and implementations to see how are we doing things. If that does not work, use the btca subagent to ask for help.
+
 # Project musync
 
 This project uses bun for everything.
