@@ -23,14 +23,13 @@ const downloadOnlyOption = Options.boolean("download-only").pipe(
   Options.withDescription("Skip API fetch"),
 );
 
-const playlistId = Args.text({ name: "playlistId" })
-  .pipe(Args.withSchema(PlaylistId))
-  .pipe(Args.optional)
-  .pipe(
-    Args.withDescription(
-      "YouTube playlist ID to sync (optional, syncs all if not provided)",
-    ),
-  );
+const playlistId = Args.text({ name: "playlistId" }).pipe(
+  Args.withSchema(PlaylistId),
+  Args.optional,
+  Args.withDescription(
+    "YouTube playlist ID to sync (optional, syncs all if not provided)",
+  ),
+);
 
 export const syncCommand = Command.make(
   "sync",

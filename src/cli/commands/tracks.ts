@@ -31,9 +31,10 @@ const formatOption = Options.choice("format", [
 export const tracksCommand = Command.make(
   "tracks",
   {
-    playlistId: Args.text({ name: "playlistId" })
-      .pipe(Args.withSchema(PlaylistId))
-      .pipe(Args.withDescription("YouTube playlist ID")),
+    playlistId: Args.text({ name: "playlistId" }).pipe(
+      Args.withSchema(PlaylistId),
+      Args.withDescription("YouTube playlist ID"),
+    ),
     downloaded: downloadedOption,
     missing: missingOption,
     limit: limitOption,

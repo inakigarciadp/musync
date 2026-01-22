@@ -6,10 +6,11 @@ import { PlaylistId } from "../../../domain/models/Playlist";
 export const addPlaylistCommand = Command.make(
   "add",
   {
-    playlistIds: Args.text({ name: "playlistId" })
-      .pipe(Args.withSchema(PlaylistId))
-      .pipe(Args.repeated)
-      .pipe(Args.withDescription("YouTube playlist IDs to track")),
+    playlistIds: Args.text({ name: "playlistId" }).pipe(
+      Args.withSchema(PlaylistId),
+      Args.repeated,
+      Args.withDescription("YouTube playlist IDs to track"),
+    ),
   },
   ({ playlistIds }) =>
     Effect.gen(function* () {
