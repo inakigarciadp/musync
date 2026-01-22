@@ -28,6 +28,11 @@ const limitOption = Options.integer("limit").pipe(
   Options.withSchema(MaxResults),
 );
 
+const allOption = Options.boolean("all").pipe(
+  Options.withAlias("a"),
+  Options.withDescription("Fetch all tracks (ignore pagination)"),
+);
+
 export const tracksCommand = Command.make(
   "tracks",
   {
@@ -38,11 +43,17 @@ export const tracksCommand = Command.make(
     format: formatOption,
     pageToken: pageTokenOption,
     limit: limitOption,
+    all: allOption,
   },
-  Effect.fnUntraced(function* ({ playlistId, format, pageToken, limit }) {
+  Effect.fnUntraced(function* ({ playlistId, format, pageToken, limit, all }) {
     const youtube = yield* YouTubeService;
-    const token = Option.getOrElse(pageToken, () => undefined);
-    const response = yield* youtube.listPlaylistItems(playlistId, token, limit);
+    const response = yield* all
+      ? youtube.listAllPlaylistItems(playlistId)
+      : youtube.listPlaylistItems(
+          playlistId,
+          Option.getOrElse(pageToken, () => undefined),
+          limit,
+        );
     yield* formatTracks(response, format);
   }),
 ).pipe(Command.withDescription("List tracks from a playlist"));

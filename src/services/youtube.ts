@@ -118,6 +118,18 @@ export class YouTubeService extends Context.Tag("@app/YouTubeService")<
       | YouTubeServiceUnavailableError
       | ParseError
     >;
+    readonly listAllPlaylistItems: (
+      playlistId: PlaylistId,
+    ) => Effect.Effect<
+      TrackListResponse,
+      | YouTubeApiError
+      | YouTubeNetworkError
+      | AuthenticationRequiredError
+      | RateLimitError
+      | ResourceNotFoundError
+      | YouTubeServiceUnavailableError
+      | ParseError
+    >;
     readonly listPlaylistItems: (
       playlistId: PlaylistId,
       pageToken?: string,
@@ -189,6 +201,37 @@ export class YouTubeService extends Context.Tag("@app/YouTubeService")<
         });
       });
 
+      const listAllPlaylistItems = Effect.fnUntraced(function* (
+        playlistId: PlaylistId,
+      ) {
+        const allItems = [];
+        let pageToken: string | undefined;
+        let lastPageInfo: PageInfo | undefined;
+
+        while (true) {
+          const response = yield* listPlaylistItems(
+            playlistId,
+            pageToken,
+            50 as MaxResults,
+          );
+          allItems.push(...response.items);
+          lastPageInfo = response.pageInfo;
+
+          pageToken = response.nextPageToken;
+          if (!pageToken) {
+            break;
+          }
+        }
+
+        return new TrackListResponse({
+          kind: "youtube#playlistItemListResponse",
+          etag: undefined,
+          pageInfo: lastPageInfo,
+          items: allItems,
+          nextPageToken: undefined,
+        });
+      });
+
       const listPlaylistItems = Effect.fnUntraced(
         function* (
           playlistId: PlaylistId,
@@ -221,6 +264,7 @@ export class YouTubeService extends Context.Tag("@app/YouTubeService")<
       return YouTubeService.of({
         listPlaylists,
         listAllPlaylists,
+        listAllPlaylistItems,
         listPlaylistItems,
       });
     }),
