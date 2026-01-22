@@ -42,7 +42,7 @@ The application uses a centralized, type-safe error handling system with Effect:
 
 ### When Adding New Errors
 
-1. Define the error in its domain file (e.g., `src/domain/errors/YouTubeErrors.ts`).
+1. Define the error in its domain file (e.g., `src/domain/errors/youtube.ts`).
 2. Add it to the `AppError` union in `src/domain/errors/index.ts`.
 3. Add a handler case in `src/presentation/error-presentation.ts` (compiler will enforce this).
 4. Assign an appropriate exit code from the established convention.
@@ -96,45 +96,43 @@ src/
 ├── presentation/
 │   ├── error-presentation.ts    # Centralized error formatting and exit codes
 │   └── formatters/
+│       ├── index.ts
 │       ├── table.ts
 │       ├── json.ts
-│       └── compact.ts
+│       ├── compact.ts
+│       └── utils.ts
 ├── services/
-│   ├── Auth.ts                    # OAuth token management
-│   ├── Config.ts                  # User preferences
-│   ├── Database.ts                # SQLite operations
-│   ├── Download.ts                # Coordinates downloading
-│   ├── FileSystem.ts              # File operations
-│   ├── M3U8.ts                    # Playlist file generation
-│   ├── Metadata.ts                # FLAC tagging
-│   └── YouTube.ts                 # YouTube API wrapper
+│   ├── auth.ts                    # OAuth token management
+│   ├── config.ts                  # User preferences
+│   ├── youtube.ts                 # YouTube API wrapper
+│   ├── database.ts                # SQLite operations
+│   ├── download.ts                # Coordinates downloading
+│   ├── file-system.ts             # File operations
+│   ├── m3u8.ts                    # Playlist file generation
+│   └── metadata.ts                # FLAC tagging
 ├── http/
-│   ├── clients/
-│   │   ├── OAuthClient.ts         # For OAuth flow (Google OAuth endpoints)
-│   │   ├── YouTubeApiClient.ts    # For YouTube Data API v3
-│   │   └── DownloadClient.ts      # For yt-dlp or download service
-│   ├── layers/
-│   │   ├── OAuthClientLive.ts     # Production OAuth client layer
-│   │   ├── YouTubeApiClientLive.ts # Production YouTube client layer
-│   │   ├── DownloadClientLive.ts  # Production download client layer
-│   │   └── index.ts               # Export all layers
-│   └── models/
-│       ├── OAuthModels.ts         # Token response, refresh, etc.
-│       ├── YouTubeModels.ts       # Playlist, video, channel schemas
-│       └── DownloadModels.ts      # Download progress, status
+│   └── layers/
+│       ├── oauth-http.ts         # For OAuth flow (Google OAuth endpoints)
+│       ├── youtube-api-http.ts    # For YouTube Data API v3
+│       └── download-client.ts      # For yt-dlp or download service
 ├── domain/
 │   ├── models/
-│   │   ├── Playlist.ts
-│   │   ├── Track.ts
-│   │   ├── Config.ts
-│   │   └── Auth.ts
+│   │   ├── auth.ts
+│   │   ├── format.ts
+│   │   ├── config.ts
+│   │   ├── track.ts
+│   │   ├── playlist.ts
+│   │   └── youtube/
+│   │       ├── playlist.ts
+│   │       └── tracks.ts
 │   └── errors/
 │       ├── index.ts                 # AppError union type (all error types)
-│       ├── AuthErrors.ts
-│       ├── DatabaseErrors.ts
-│       ├── DownloadErrors.ts
-│       ├── FileSystemErrors.ts
-│       └── YouTubeErrors.ts
+│       ├── auth.ts
+│       ├── youtube.ts
+│       ├── database.ts
+│       ├── download.ts
+│       ├── file-system.ts
+│       └── cli.ts
 ├── infrastructure/
 │   ├── db/
 │   │   ├── schema.sql
@@ -144,11 +142,12 @@ src/
 │   ├── paths/
 │   │   └── xdg.ts                 # XDG directory handling
 │   └── oauth/
-│       ├── flow.ts                # OAuth authorization flow
-│       └── pkce.ts                # PKCE challenge generation
-├── layers/
-│   ├── app.ts                     # Main app layer composition
-│   └── http.ts                    # HTTP client layers composition
+│       ├── browser.ts             # Browser for OAuth flow
+│       ├── callback-server.ts     # OAuth callback server
+│       ├── pkce.ts                # PKCE challenge generation
+│       └── flow.ts                # OAuth authorization flow
+└── layers/
+    └── index.ts                   # Layer composition
 ```
 
 ## Implementation status
