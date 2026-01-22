@@ -156,5 +156,6 @@ src/
 - `auth login` - OAuth2 PKCE flow with Youtube API v3.
 - `auth logout` - Removes stored authentication tokens.
 - `auth status` - Shows authentication state and token expiry.
-- `playlists` - Lists the playlists associated to the auth'd user. Supports pagination via `--page-token` and limits via `--limit` (1-50, default 20). The `--format` and `--tracked` flags are not implemented yet.
+- `playlists` - Lists the playlists associated to the auth'd user. Supports pagination via `--page-token` and limits via `--limit` (1-50, default 20) and output formatting via `--format` (json|table|compact). The and `--tracked` flag is not implemented yet.
+- `tracks` - Lists tracks from a YouTube playlist. Requires `playlist-id` argument. Supports pagination via `--page-token`, limits via `--limit` (1-50, default 20), and output formatting via `--format` (json|table|compact). The `--downloaded` and `--missing` flags are not implemented yet.
 - All other commands - stubs
