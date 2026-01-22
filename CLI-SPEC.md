@@ -44,7 +44,7 @@ Revoke tokens, delete credentials.
 
 Show authentication state.
 
-* Displays: logged-in user, token expiry, scopes granted
+* Displays: authentication status, token expiry time, time until expiry
 
 ---
 
@@ -70,7 +70,7 @@ Fetch metadata for tracked playlists + download new tracks.
 
 ### Playlist Management
 
-#### `musync add PLxxx [PLyyy ...]`
+#### `musync playlist add PLxxx [PLyyy ...]`
 
 Start tracking playlist(s).
 
@@ -78,14 +78,14 @@ Start tracking playlist(s).
 * Fetches initial metadata
 * Does **not** auto-download (run `musync sync` after)
 
-#### `musync remove PLxxx`
+#### `musync playlist remove PLxxx`
 
 Stop tracking playlist.
 
 * Removes from tracking list
-* Keeps downloaded files (use `musync clean` to remove)
+* Keeps downloaded files (use `musync maintenance clean` to remove)
 
-#### `musync list`
+#### `musync playlist list`
 
 Show tracked playlists.
 
@@ -127,32 +127,32 @@ Combined status view.
 
 ### Maintenance
 
-#### `musync verify`
+#### `musync maintenance verify`
 
 Check integrity.
 
 * Finds missing or corrupted files
 
-#### `musync clean`
+#### `musync maintenance clean`
 
 Remove orphaned files.
 
 * Deletes files not referenced in DB
 * Interactive confirmation
 
-#### `musync orphans`
+#### `musync maintenance orphans`
 
 List orphaned files (preview before `clean`)
 
-#### `musync duplicates`
+#### `musync maintenance duplicates`
 
 Find duplicate songs (same ID across playlists)
 
-#### `musync validate PLxxx`
+#### `musync maintenance validate PLxxx`
 
 Verify all files exist for a specific playlist
 
-#### `musync refetch PLxxx`
+#### `musync maintenance refetch PLxxx`
 
 Force re-fetch metadata from API
 
@@ -253,7 +253,7 @@ All list/export commands support `--format`:
 ```bash
 musync init
 musync playlists
-musync add PLxxx PLyyy
+musync playlist add PLxxx PLyyy
 musync sync
 ```
 
@@ -266,9 +266,8 @@ musync sync
 ### Maintenance:
 
 ```bash
-musync verify
-musync clean
-musync db backup
+musync maintenance verify
+musync maintenance clean
 ```
 
 ---
