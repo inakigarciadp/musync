@@ -3,6 +3,8 @@ import { Effect, Layer, pipe } from "effect";
 import type { ParseError } from "effect/ParseResult";
 import { AuthService } from "../../services/auth";
 
+const YOUTUBE_API_BASE_URL = "https://www.googleapis.com/youtube/v3";
+
 export const YouTubeApiHttpClientLive = Layer.effect(
   HttpClient.HttpClient,
   Effect.gen(function* () {
@@ -11,6 +13,7 @@ export const YouTubeApiHttpClientLive = Layer.effect(
 
     return pipe(
       baseClient,
+      HttpClient.mapRequest(HttpClientRequest.prependUrl(YOUTUBE_API_BASE_URL)),
       HttpClient.mapRequestEffect((request) =>
         Effect.gen(function* () {
           const tokens = yield* auth.loadTokens().pipe(
