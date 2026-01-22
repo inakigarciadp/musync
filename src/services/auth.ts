@@ -161,7 +161,14 @@ export class AuthService extends Context.Tag("@app/AuthService")<
           refreshToken: data.refreshToken,
           expiresAt: new Date(data.expiresAt),
         });
-      }).pipe(Effect.catchAll(() => Effect.succeed(null)));
+      }).pipe(
+        Effect.catchTag("TokenStorageError", (error) => {
+          if (error.reason.includes("ENOENT")) {
+            return Effect.succeed(null);
+          }
+          return Effect.fail(error);
+        }),
+      );
 
       const clearTokens = Effect.gen(function* () {
         const fs = (yield* Effect.tryPromise({
