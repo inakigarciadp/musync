@@ -19,19 +19,7 @@ export const loginCommand = Command.make("login", {}, () =>
 
     const queue = yield* Queue.unbounded<string>();
 
-    const { server, port } = yield* startCallbackServer(queue).pipe(
-      Effect.catchTag("ServerStartError", (error) =>
-        Effect.gen(function* () {
-          yield* Console.error(
-            `Failed to start OAuth callback server: ${error.error}`,
-          );
-          yield* Console.error(
-            "Please ensure port 3000 is available or check your firewall settings.",
-          );
-          return yield* Effect.fail(new Error("Server start failed"));
-        }),
-      ),
-    );
+    const { server, port } = yield* startCallbackServer(queue);
 
     const redirectUri = `http://localhost:${port}/callback`;
 
@@ -45,37 +33,20 @@ export const loginCommand = Command.make("login", {}, () =>
 
     yield* Console.log("Opening browser for authorization...");
 
-    const browserResult = yield* openBrowser(authUrl).pipe(
-      Effect.catchTag("BrowserOpenError", (error) =>
+    yield* openBrowser(authUrl).pipe(
+      Effect.catchTag("BrowserOpenError", (_error) =>
         Effect.gen(function* () {
           yield* Console.warn("Could not open browser automatically.");
           yield* Console.log(`Please visit this URL: ${authUrl}`);
-          return error;
         }),
       ),
-      Effect.orElse(() => Effect.succeed(undefined)),
     );
-
-    if (browserResult) {
-      yield* Console.warn("Browser open failed, but continuing...");
-    } else {
-      yield* Console.log(
-        "Browser opened. Complete authorization in your browser.",
-      );
-    }
 
     yield* Console.log(
       "Waiting for authorization callback (timeout: 2 minutes)...",
     );
 
-    const code = yield* waitForAuthCode(queue, 120000).pipe(
-      Effect.catchTag("AuthTimeoutError", (error) =>
-        Effect.gen(function* () {
-          yield* Console.error("Authorization timed out. Please try again.");
-          return yield* Effect.fail(new Error("Authorization timed out"));
-        }),
-      ),
-    );
+    const code = yield* waitForAuthCode(queue, 120000);
 
     yield* Console.log("Authorization code received. Exchanging for tokens...");
 
