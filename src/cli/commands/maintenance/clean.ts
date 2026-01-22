@@ -2,8 +2,10 @@ import { Command } from "@effect/cli";
 import { Effect } from "effect";
 import { NotImplementedError } from "../../../domain/errors";
 
-export const cleanCommand = Command.make("clean", {}, () =>
-  Effect.gen(function* () {
+export const cleanCommand = Command.make(
+  "clean",
+  {},
+  Effect.fnUntraced(function* () {
     yield* Effect.logInfo("Clean not yet implemented");
     return yield* NotImplementedError.make({
       command: "musync maintenance clean",
