@@ -142,7 +142,7 @@ export class AuthService extends Context.Tag("@app/AuthService")<
                 }),
             })) as typeof import("node:fs/promises");
 
-            const json = yield* Schema.encode(StoredTokensToJson)(tokens);
+            const json = yield* Schema.encode(StoredTokensFromJson)(tokens);
 
             yield* Effect.tryPromise({
               try: () =>
