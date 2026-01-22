@@ -46,7 +46,7 @@ export class TokenResponse extends Schema.Class<TokenResponse>("TokenResponse")(
 export class StoredTokens extends Schema.Class<StoredTokens>("StoredTokens")({
   accessToken: AccessToken,
   refreshToken: RefreshToken,
-  expiresAt: Schema.DateFromSelf,
+  expiresAt: Schema.Date,
 }) {
   get isExpired(): boolean {
     return new Date() >= this.expiresAt;
@@ -67,4 +67,4 @@ export class StoredTokens extends Schema.Class<StoredTokens>("StoredTokens")({
 }
 
 export const StoredTokensFromJson = Schema.parseJson(StoredTokens);
-export const StoredTokensToJson = Schema.parseJson(StoredTokens);
+export const StoredTokensToJson = Schema.encodedSchema(StoredTokensFromJson);
