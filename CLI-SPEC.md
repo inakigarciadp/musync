@@ -97,8 +97,6 @@ Stop tracking playlist.
 
 Show tracked playlists.
 
-* Columns: name, ID, total/downloaded songs, last sync time
-
 ---
 
 ### Inspection & Debugging
