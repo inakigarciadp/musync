@@ -90,8 +90,7 @@ Start tracking playlist(s).
 
 Stop tracking playlist.
 
-* Removes from tracking list
-* Keeps downloaded files (use `musync maintenance clean` to remove)
+* Removes from the database table.
 
 #### `musync playlist list`
 
