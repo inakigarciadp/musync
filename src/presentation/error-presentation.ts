@@ -121,6 +121,18 @@ const formatError: (error: AppError) => FormattedError =
       exitCode: 1,
     }),
 
+    // Database errors
+    DatabaseError: (e) => ({
+      title: "Database error",
+      message: e.reason,
+      exitCode: 1,
+    }),
+    DatabaseMigrationError: (e) => ({
+      title: "Database migration error",
+      message: e.reason,
+      exitCode: 1,
+    }),
+
     // General errors
     NotImplementedError: (e) => ({
       title: "Not implemented",

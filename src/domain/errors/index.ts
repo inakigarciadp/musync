@@ -16,7 +16,8 @@ import type {
   TokenRefreshError,
   TokenStorageError,
 } from "./auth";
-
+// Database errors
+import type { DatabaseError, DatabaseMigrationError } from "./database";
 // YouTube errors
 import type {
   AuthenticationRequiredError,
@@ -57,6 +58,9 @@ export type AppError =
   | ValidationError
   | PlaylistOperationUnsupportedError
   | YouTubeApiError
+  // Database errors
+  | DatabaseError
+  | DatabaseMigrationError
   // HTTP errors (from @effect/platform)
   | HttpClientError
   // CLI validation errors (from @effect/cli)

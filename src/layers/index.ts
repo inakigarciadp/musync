@@ -5,11 +5,17 @@ import { OAuthHttpClientLive } from "../http/layers/oauth-http";
 import { YouTubeApiHttpClientLive } from "../http/layers/youtube-api-http";
 import { AuthService } from "../services/auth";
 import { ConfigService } from "../services/config";
+import { DatabaseService } from "../services/database";
 import { YouTubeService } from "../services/youtube";
 
 const configProviderLayer = Layer.setConfigProvider(ConfigProvider.fromEnv());
 
 const configServiceLayer = ConfigService.layer.pipe(
+  Layer.provide(configProviderLayer),
+  Layer.provide(BunFileSystem.layer),
+);
+
+const databaseServiceLayer = DatabaseService.Default.pipe(
   Layer.provide(configProviderLayer),
   Layer.provide(BunFileSystem.layer),
 );
@@ -38,4 +44,8 @@ const youtubeServiceLayer = YouTubeService.layer.pipe(
 );
 
 // Export both AuthService and YouTubeService for use by CLI commands
-export const AppLayer = Layer.merge(authServiceLayer, youtubeServiceLayer);
+export const AppLayer = Layer.mergeAll(
+  authServiceLayer,
+  youtubeServiceLayer,
+  databaseServiceLayer,
+);
