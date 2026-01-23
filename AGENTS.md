@@ -147,4 +147,5 @@ src/
 - `auth status` - Shows authentication state and token expiry.
 - `playlists` - Lists the playlists associated to the auth'd user. Supports pagination via `--page-token`, limits via `--limit` (1-50, default 20), output formatting via `--format` (json|table|compact), and `--all` flag to fetch all playlists ignoring pagination. The `--tracked` flag is not implemented yet.
 - `tracks` - Lists tracks from a YouTube playlist. Requires `playlist-id` argument. Supports pagination via `--page-token`, limits via `--limit` (1-50, default 20), output formatting via `--format` (json|table|compact), and `--all` flag to fetch all tracks ignoring pagination. The `--downloaded` and `--missing` flags are not implemented yet.
+- `playlist (add|remove|list)` - Integrates with the database service to add, remove, and list tracked playlists. The current database schema only saves the playlist ID and the creation date.
 - All other commands - stubs
