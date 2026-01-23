@@ -83,7 +83,7 @@ Fetch metadata for tracked playlists + download new tracks.
 Start tracking playlist(s).
 
 * Adds to database
-* Fetches initial metadata
+* Fetches initial metadata (not needed for now)
 * Does **not** auto-download (run `musync sync` after)
 
 #### `musync playlist remove PLxxx`
