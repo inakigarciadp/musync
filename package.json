@@ -8,7 +8,8 @@
     "prepare": "effect-language-service patch",
     "format": "biome format --write",
     "lint": "biome lint .",
-    "check": "biome check ."
+    "check": "biome check .",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@effect/cli": "^0.73.0",
