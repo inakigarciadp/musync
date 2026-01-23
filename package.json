@@ -15,12 +15,15 @@
     "@effect/platform": "^0.94.1",
     "@effect/platform-bun": "^0.87.0",
     "@effect/typeclass": "^0.38.0",
+    "@libsql/client": "^0.17.0",
+    "drizzle-orm": "^0.45.1",
     "effect": "^3.19.14"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.11",
     "@effect/language-service": "^0.65.0",
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "drizzle-kit": "^0.31.8"
   },
   "peerDependencies": {
     "typescript": "^5"
