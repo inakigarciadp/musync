@@ -44,7 +44,7 @@ export class DatabaseService extends Effect.Service<DatabaseService>()(
             db.run(`PRAGMA foreign_keys = ON;`),
             db.run(`PRAGMA journal_mode = WAL;`),
             db.run(`PRAGMA synchronous = NORMAL;`),
-            db.run(`PRAGMA cache_size = 1000000000;`),
+            db.run(`PRAGMA cache_size = 10000;`),
             db.run(`PRAGMA temp_store = memory;`),
             db.run(`PRAGMA mmap_size = 268435456;`),
           ]),
