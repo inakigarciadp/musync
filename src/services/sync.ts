@@ -60,14 +60,7 @@ export class SyncService extends Effect.Service<SyncService>()("sync", {
               await db
                 .insert(schema.tracks)
                 .values(tracksToInsert)
-                .onConflictDoUpdate({
-                  target: schema.tracks.id,
-                  set: {
-                    title: schema.tracks.title,
-                    channelTitle: schema.tracks.channelTitle,
-                    publishedAt: schema.tracks.publishedAt,
-                  },
-                })
+                .onConflictDoNothing()
                 .run();
 
               // 5. Insert into the join table
