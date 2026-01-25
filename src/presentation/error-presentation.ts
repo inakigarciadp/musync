@@ -133,6 +133,14 @@ const formatError: (error: AppError) => FormattedError =
       exitCode: 1,
     }),
 
+    // Song extraction errors
+    SongExtractionError: (e) => ({
+      title: "Metadata extraction error",
+      message: e.reason,
+      suggestion: "The AI service may be unavailable. Try again later.",
+      exitCode: 1,
+    }),
+
     // General errors
     NotImplementedError: (e) => ({
       title: "Not implemented",
