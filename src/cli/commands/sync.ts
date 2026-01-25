@@ -12,7 +12,7 @@ export const syncCommand = Command.make(
   }),
 
   // This command will do a lot of things:
-  // 1. Sync playlists and its track to our database. In the same database transaction we will:
+  // 1. Sync playlists and its tracks to our database. In the same database transaction we will:
   //   - Delete everything from the join table
   //   - Fetch all tracked playlists from the database
   //   - For each playlist, fetch its tracks from the API and insert them both in the tracks table and in the join table.
