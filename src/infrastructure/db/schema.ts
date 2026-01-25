@@ -38,3 +38,14 @@ export const playlistTracks = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.playlistId, t.trackId] })],
 );
+
+export const songs = sqliteTable("songs", {
+  trackId: text("track_id")
+    .primaryKey()
+    .references(() => tracks.id, { onDelete: "cascade" }),
+  songName: text("song_name"), // nullable if extraction failed
+  artistName: text("artist_name"), // nullable if extraction failed
+  createdAt: timestamp("created_at")
+    .$default(() => new Date())
+    .notNull(),
+});
