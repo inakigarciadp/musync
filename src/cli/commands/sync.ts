@@ -21,6 +21,8 @@ export const syncCommand = Command.make(
 
     yield* syncService.syncPlaylistsToDb;
 
+    yield* syncService.extractSongsWithAi;
+
     yield* Effect.logInfo("Sync process completed");
   }),
 ).pipe(Command.withDescription("Fetch metadata and download new tracks"));

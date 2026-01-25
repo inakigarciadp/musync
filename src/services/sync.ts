@@ -1,12 +1,15 @@
+import { eq, isNull } from "drizzle-orm";
 import { Effect } from "effect";
 import type { PlaylistId } from "../domain/models/youtube/playlist";
 import { DatabaseService } from "./database";
+import { SongExtractionService } from "./song-extraction";
 import { YouTubeService } from "./youtube";
 
 export class SyncService extends Effect.Service<SyncService>()("sync", {
   effect: Effect.gen(function* () {
     const dbService = yield* DatabaseService;
     const youtube = yield* YouTubeService;
+    const songExtraction = yield* SongExtractionService;
 
     const syncPlaylistsToDb = Effect.gen(function* () {
       yield* Effect.logInfo("Syncing all playlists to database");
@@ -83,8 +86,63 @@ export class SyncService extends Effect.Service<SyncService>()("sync", {
       yield* Effect.logInfo("Sync to database completed successfully");
     });
 
+    const extractSongsWithAi = Effect.gen(function* () {
+      const { schema, runQuery } = dbService;
+
+      yield* Effect.logInfo("Extracting song metadata using AI");
+
+      // Get tracks that don't have song entries yet
+      const tracksWithoutSongs = yield* runQuery(async (db) => {
+        return await db
+          .select({
+            id: schema.tracks.id,
+            title: schema.tracks.title,
+            channelTitle: schema.tracks.channelTitle,
+          })
+          .from(schema.tracks)
+          .leftJoin(schema.songs, eq(schema.tracks.id, schema.songs.trackId))
+          .where(isNull(schema.songs.trackId))
+          .all();
+      });
+
+      yield* Effect.logInfo(
+        `Found ${tracksWithoutSongs.length} tracks needing extraction`,
+      );
+
+      for (const track of tracksWithoutSongs) {
+        yield* Effect.logInfo(`Extracting metadata for: ${track.title}`);
+
+        const result = yield* songExtraction
+          .extractSongMetadata(track.title, track.channelTitle)
+          .pipe(
+            Effect.catchAll((e) => {
+              return Effect.logWarning(
+                `Extraction failed for ${track.id}: ${e.reason}`,
+              ).pipe(Effect.map(() => ({ songName: null, artistName: null })));
+            }),
+          );
+
+        yield* runQuery(async (db) => {
+          await db
+            .insert(schema.songs)
+            .values({
+              trackId: track.id,
+              songName: result.songName,
+              artistName: result.artistName,
+            })
+            .run();
+        });
+
+        // Sleep 5 seconds between calls to avoid rate limiting
+        yield* Effect.sleep("5 seconds");
+      }
+
+      yield* Effect.logInfo("AI metadata extraction completed");
+    });
+
     return {
       syncPlaylistsToDb,
+      extractSongsWithAi,
     };
   }),
 }) {}
