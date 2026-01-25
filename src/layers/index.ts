@@ -6,6 +6,7 @@ import { YouTubeApiHttpClientLive } from "../http/layers/youtube-api-http";
 import { AuthService } from "../services/auth";
 import { ConfigService } from "../services/config";
 import { DatabaseService } from "../services/database";
+import { SyncService } from "../services/sync";
 import { YouTubeService } from "../services/youtube";
 
 const configProviderLayer = Layer.setConfigProvider(ConfigProvider.fromEnv());
@@ -43,9 +44,15 @@ const youtubeServiceLayer = YouTubeService.layer.pipe(
   Layer.provide(youtubeHttpClientLayer),
 );
 
+const syncServiceLayer = SyncService.Default.pipe(
+  Layer.provide(databaseServiceLayer),
+  Layer.provide(youtubeServiceLayer),
+);
+
 // Export both AuthService and YouTubeService for use by CLI commands
 export const AppLayer = Layer.mergeAll(
   authServiceLayer,
   youtubeServiceLayer,
   databaseServiceLayer,
+  syncServiceLayer,
 );
