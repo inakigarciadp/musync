@@ -6,6 +6,7 @@ import { YouTubeApiHttpClientLive } from "../http/layers/youtube-api-http";
 import { AuthService } from "../services/auth";
 import { ConfigService } from "../services/config";
 import { DatabaseService } from "../services/database";
+import { SongExtractionService } from "../services/song-extraction";
 import { SyncService } from "../services/sync";
 import { YouTubeService } from "../services/youtube";
 
@@ -19,6 +20,10 @@ const configServiceLayer = ConfigService.layer.pipe(
 const databaseServiceLayer = DatabaseService.Default.pipe(
   Layer.provide(configProviderLayer),
   Layer.provide(BunFileSystem.layer),
+);
+
+const extractionServiceLayer = SongExtractionService.Default.pipe(
+  Layer.provide(configProviderLayer),
 );
 
 // OAuth HTTP client with base URL configured
@@ -47,6 +52,7 @@ const youtubeServiceLayer = YouTubeService.layer.pipe(
 const syncServiceLayer = SyncService.Default.pipe(
   Layer.provide(databaseServiceLayer),
   Layer.provide(youtubeServiceLayer),
+  Layer.provide(extractionServiceLayer),
 );
 
 // Export both AuthService and YouTubeService for use by CLI commands
