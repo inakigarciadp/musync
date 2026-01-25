@@ -18,6 +18,8 @@ import type {
 } from "./auth";
 // Database errors
 import type { DatabaseError, DatabaseMigrationError } from "./database";
+// Song extraction errors
+import type { SongExtractionError } from "./song-extraction";
 // YouTube errors
 import type {
   AuthenticationRequiredError,
@@ -61,6 +63,8 @@ export type AppError =
   // Database errors
   | DatabaseError
   | DatabaseMigrationError
+  // Song extraction errors
+  | SongExtractionError
   // HTTP errors (from @effect/platform)
   | HttpClientError
   // CLI validation errors (from @effect/cli)
