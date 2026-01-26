@@ -44,6 +44,12 @@ Rules:
             SongExtractionError.make({
               reason: `Failed to extract metadata via AI SDK: ${String(cause)}`,
               cause,
+              isRateLimit:
+                (typeof cause === "object" &&
+                  cause !== null &&
+                  "statusCode" in cause &&
+                  cause.statusCode === 429) ||
+                String(cause).includes("limit exceeded"),
             }),
         });
 
