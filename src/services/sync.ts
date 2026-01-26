@@ -134,12 +134,18 @@ export class SyncService extends Effect.Service<SyncService>()("sync", {
             );
 
           yield* runQuery(async (db) => {
+            const extractionState =
+              result.songName && result.artistName
+                ? "finalized"
+                : "manual_review";
+
             await db
               .insert(schema.songs)
               .values({
                 trackId: track.id,
                 songName: result.songName,
                 artistName: result.artistName,
+                extractionState,
               })
               .run();
           });

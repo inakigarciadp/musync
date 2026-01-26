@@ -45,6 +45,10 @@ export const songs = sqliteTable("songs", {
     .references(() => tracks.id, { onDelete: "cascade" }),
   songName: text("song_name"), // nullable if extraction failed
   artistName: text("artist_name"), // nullable if extraction failed
+  extractionState: text("extraction_state", {
+    enum: ["finalized", "manual_review"],
+  })
+    .notNull(),
   createdAt: timestamp("created_at")
     .$default(() => new Date())
     .notNull(),
