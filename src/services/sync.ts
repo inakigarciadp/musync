@@ -1,4 +1,4 @@
-import { eq, isNull } from "drizzle-orm";
+import { count, eq, isNull } from "drizzle-orm";
 import { Effect, Schedule } from "effect";
 import type { SongExtractionError } from "../domain/errors/song-extraction";
 import type { PlaylistId } from "../domain/models/youtube/playlist";
@@ -92,25 +92,38 @@ export class SyncService extends Effect.Service<SyncService>()("sync", {
 
       yield* Effect.logInfo("Extracting song metadata using AI");
 
-      // Get tracks that don't have song entries yet
-      const tracksWithoutSongs = yield* runQuery(async (db) => {
-        return await db
-          .select({
-            id: schema.tracks.id,
-            title: schema.tracks.title,
-            channelTitle: schema.tracks.channelTitle,
-          })
+      // Get initial count for logging
+      const { total } = yield* runQuery(async (db) => {
+        const result = await db
+          .select({ total: count() })
           .from(schema.tracks)
           .leftJoin(schema.songs, eq(schema.tracks.id, schema.songs.trackId))
-          .where(isNull(schema.songs.trackId))
-          .all();
+          .where(isNull(schema.songs.trackId));
+        return result[0] ?? { total: 0 };
       });
 
-      yield* Effect.logInfo(
-        `Found ${tracksWithoutSongs.length} tracks needing extraction`,
-      );
+      yield* Effect.logInfo(`Found ${total} tracks needing extraction`);
 
-      for (const track of tracksWithoutSongs) {
+      while (true) {
+        // Get the next track that doesn't have a song entry yet
+        const track = yield* runQuery(async (db) => {
+          return await db
+            .select({
+              id: schema.tracks.id,
+              title: schema.tracks.title,
+              channelTitle: schema.tracks.channelTitle,
+            })
+            .from(schema.tracks)
+            .leftJoin(schema.songs, eq(schema.tracks.id, schema.songs.trackId))
+            .where(isNull(schema.songs.trackId))
+            .limit(1)
+            .get();
+        });
+
+        if (!track) {
+          break;
+        }
+
         yield* Effect.logInfo(`Extracting metadata for: ${track.title}`);
 
         yield* Effect.gen(function* () {
