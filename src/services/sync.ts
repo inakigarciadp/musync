@@ -150,9 +150,6 @@ export class SyncService extends Effect.Service<SyncService>()("sync", {
             ),
           ),
         );
-
-        // Sleep 5 seconds between calls to avoid rate limiting
-        yield* Effect.sleep("5 seconds");
       }
 
       yield* Effect.logInfo("AI metadata extraction completed");
