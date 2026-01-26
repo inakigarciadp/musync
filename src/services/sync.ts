@@ -112,26 +112,27 @@ export class SyncService extends Effect.Service<SyncService>()("sync", {
       for (const track of tracksWithoutSongs) {
         yield* Effect.logInfo(`Extracting metadata for: ${track.title}`);
 
-        const result = yield* songExtraction
-          .extractSongMetadata(track.title, track.channelTitle)
-          .pipe(
-            Effect.catchAll((e) => {
-              return Effect.logWarning(
-                `Extraction failed for ${track.id}: ${e.reason}`,
-              ).pipe(Effect.map(() => ({ songName: null, artistName: null })));
-            }),
+        yield* Effect.gen(function* () {
+          const result = yield* songExtraction.extractSongMetadata(
+            track.title,
+            track.channelTitle,
           );
 
-        yield* runQuery(async (db) => {
-          await db
-            .insert(schema.songs)
-            .values({
-              trackId: track.id,
-              songName: result.songName,
-              artistName: result.artistName,
-            })
-            .run();
-        });
+          yield* runQuery(async (db) => {
+            await db
+              .insert(schema.songs)
+              .values({
+                trackId: track.id,
+                songName: result.songName,
+                artistName: result.artistName,
+              })
+              .run();
+          });
+        }).pipe(
+          Effect.catchAll((e) =>
+            Effect.logWarning(`Extraction failed for ${track.id}: ${e.reason}`),
+          ),
+        );
 
         // Sleep 5 seconds between calls to avoid rate limiting
         yield* Effect.sleep("5 seconds");
