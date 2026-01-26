@@ -1,5 +1,5 @@
 import { eq, isNull } from "drizzle-orm";
-import { Effect } from "effect";
+import { Effect, Schedule } from "effect";
 import type { PlaylistId } from "../domain/models/youtube/playlist";
 import { DatabaseService } from "./database";
 import { SongExtractionService } from "./song-extraction";
@@ -113,10 +113,21 @@ export class SyncService extends Effect.Service<SyncService>()("sync", {
         yield* Effect.logInfo(`Extracting metadata for: ${track.title}`);
 
         yield* Effect.gen(function* () {
-          const result = yield* songExtraction.extractSongMetadata(
-            track.title,
-            track.channelTitle,
-          );
+          const result = yield* songExtraction
+            .extractSongMetadata(track.title, track.channelTitle)
+            .pipe(
+              Effect.tapError((e) =>
+                Effect.logWarning(
+                  `Retrying extraction for ${track.id} due to error: ${e.reason}`,
+                ),
+              ),
+              Effect.retry(
+                Schedule.intersect(
+                  Schedule.exponential("2 seconds"),
+                  Schedule.recurs(3),
+                ),
+              ),
+            );
 
           yield* runQuery(async (db) => {
             await db
@@ -130,7 +141,9 @@ export class SyncService extends Effect.Service<SyncService>()("sync", {
           });
         }).pipe(
           Effect.catchAll((e) =>
-            Effect.logWarning(`Extraction failed for ${track.id}: ${e.reason}`),
+            Effect.logError(
+              `Extraction permanently failed for ${track.id} after retries: ${e.reason}`,
+            ),
           ),
         );
 
