@@ -119,7 +119,7 @@ export class SyncService extends Effect.Service<SyncService>()("sync", {
             .pipe(
               Effect.tapError((e) =>
                 Effect.logWarning(
-                  `Retrying extraction for ${track.id} due to error: ${e.reason}`,
+                  `Retrying extraction for ${track.title} due to error: ${e.reason}`,
                 ),
               ),
               Effect.retry(
