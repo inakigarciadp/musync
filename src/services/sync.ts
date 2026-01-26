@@ -152,7 +152,7 @@ export class SyncService extends Effect.Service<SyncService>()("sync", {
         }).pipe(
           Effect.catchAll((e) =>
             Effect.logError(
-              `Extraction permanently failed for ${track.id} after retries: ${e.reason}`,
+              `Extraction permanently failed for ${track.title} after retries: ${e.reason}`,
             ),
           ),
         );
