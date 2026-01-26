@@ -1,5 +1,6 @@
 import { eq, isNull } from "drizzle-orm";
 import { Effect, Schedule } from "effect";
+import type { SongExtractionError } from "../domain/errors/song-extraction";
 import type { PlaylistId } from "../domain/models/youtube/playlist";
 import { DatabaseService } from "./database";
 import { SongExtractionService } from "./song-extraction";
@@ -122,9 +123,12 @@ export class SyncService extends Effect.Service<SyncService>()("sync", {
                 ),
               ),
               Effect.retry(
-                Schedule.intersect(
-                  Schedule.exponential("2 seconds"),
-                  Schedule.recurs(3),
+                Schedule.exponential("2 seconds").pipe(
+                  Schedule.intersect(Schedule.recurs(5)),
+                  Schedule.intersect(Schedule.identity<SongExtractionError>()),
+                  Schedule.modifyDelay(([[duration, _], error], __) =>
+                    error.isRateLimit ? "60 seconds" : duration,
+                  ),
                 ),
               ),
             );
