@@ -73,5 +73,7 @@ export const acquireCallbackServer: Effect.Effect<
 
   return { port, queue };
 }).pipe(
-  Effect.catchAllCause((cause) => ServerStartError.make({ error: cause })),
+  Effect.catchAllCause((cause) =>
+    ServerStartError.make({ message: "Failed to start server", cause: cause }),
+  ),
 );

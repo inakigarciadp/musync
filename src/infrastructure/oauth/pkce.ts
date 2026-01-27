@@ -16,7 +16,7 @@ export const generateCodeVerifier = Effect.fn("generateCodeVerifier")(
       try: () => crypto.getRandomValues(new Uint8Array(32)),
       catch: (error) =>
         PKCEGenerationError.make({
-          reason: `Failed to generate random bytes: ${error}`,
+          message: `Failed to generate random bytes: ${error}`,
         }),
     });
     const plainValue = base64UrlEncode(bytes);
@@ -32,7 +32,7 @@ export const generateCodeChallenge = Effect.fn("generateCodeChallenge")(
       try: () => crypto.subtle.digest("SHA-256", data) as Promise<ArrayBuffer>,
       catch: (error) =>
         PKCEGenerationError.make({
-          reason: `Failed to generate SHA-256 hash: ${error}`,
+          message: `Failed to generate SHA-256 hash: ${error}`,
         }),
     });
     const plainValue = base64UrlEncode(new Uint8Array(hash));

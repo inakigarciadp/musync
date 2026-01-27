@@ -44,7 +44,11 @@ const loginHandler = Effect.fnUntraced(function* () {
   const code = yield* Queue.take(queue).pipe(
     Effect.timeoutFail({
       duration: 120000,
-      onTimeout: () => AuthTimeoutError.make({ timeoutMs: 120000 }),
+      onTimeout: () =>
+        AuthTimeoutError.make({
+          message: "Authentication timed out",
+          timeoutMs: 120000,
+        }),
     }),
   );
 

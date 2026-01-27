@@ -17,18 +17,28 @@ export const openBrowser = Effect.fn("openBrowser")(function* (url: string) {
         stdout: "pipe",
         stderr: "pipe",
       }),
-    catch: (error) => BrowserOpenError.make({ url, error }),
+    catch: (error) =>
+      BrowserOpenError.make({
+        message: `Failed to open browser: ${error}`,
+        url,
+        cause: error,
+      }),
   });
 
   const exitCode = yield* Effect.tryPromise({
     try: () => process.exited,
-    catch: (error) => BrowserOpenError.make({ url, error }),
+    catch: (error) =>
+      BrowserOpenError.make({
+        message: `Failed to open browser: ${error}`,
+        url,
+        cause: error,
+      }),
   });
 
   if (exitCode !== 0) {
     return yield* BrowserOpenError.make({
+      message: `Process exited with code ${exitCode}`,
       url,
-      error: `Process exited with code ${exitCode}`,
     });
   }
 

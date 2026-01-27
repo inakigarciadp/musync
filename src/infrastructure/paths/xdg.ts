@@ -21,7 +21,7 @@ export const getAppDataDir = Effect.fn("getAppDataDir")(function* () {
   yield* fs.makeDirectory(dir, { recursive: true }).pipe(
     Effect.mapError((error) =>
       FileSystemError.make({
-        reason: `Failed to create app data directory: ${error}`,
+        message: `Failed to create app data directory: ${error.message}`,
       }),
     ),
   );

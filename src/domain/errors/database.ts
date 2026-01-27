@@ -3,7 +3,7 @@ import { Schema } from "effect";
 export class DatabaseError extends Schema.TaggedError<DatabaseError>()(
   "DatabaseError",
   {
-    reason: Schema.String,
+    message: Schema.String,
     cause: Schema.optional(Schema.Unknown),
   },
 ) {}
@@ -11,7 +11,7 @@ export class DatabaseError extends Schema.TaggedError<DatabaseError>()(
 export class DatabaseMigrationError extends Schema.TaggedError<DatabaseMigrationError>()(
   "DatabaseMigrationError",
   {
-    reason: Schema.String,
+    message: Schema.String,
     migration: Schema.optional(Schema.String),
     cause: Schema.optional(Schema.Unknown),
   },
