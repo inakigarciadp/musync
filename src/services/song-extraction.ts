@@ -22,7 +22,7 @@ export class SongExtractionService extends Effect.Service<SongExtractionService>
         const result = yield* Effect.tryPromise({
           try: () =>
             generateText({
-              model: cerebras("zai-glm-4.7"),
+              model: cerebras("gpt-oss-120b"),
               output: Output.object({
                 schema: aiJsonSchema(effectJsonSchema),
               }),
