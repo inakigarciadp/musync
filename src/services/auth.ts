@@ -5,6 +5,7 @@ import {
   HttpClientRequest,
   HttpClientResponse,
 } from "@effect/platform";
+import type { PlatformError } from "@effect/platform/Error";
 import { Context, Effect, Layer, Option, Redacted, Ref, Schema } from "effect";
 import type { ParseError } from "effect/ParseResult";
 import {
@@ -155,9 +156,9 @@ export class AuthService extends Context.Tag("@app/AuthService")<
             mode: 0o600,
           })
           .pipe(
-            Effect.mapError((error) =>
+            Effect.mapError((error: PlatformError) =>
               TokenStorageError.make({
-                reason: `Failed to store tokens: ${error}`,
+                message: `Failed to store tokens: ${error.message}`,
               }),
             ),
           );
@@ -166,7 +167,7 @@ export class AuthService extends Context.Tag("@app/AuthService")<
       const loadTokens = fs.readFileString(tokenStoragePath).pipe(
         Effect.mapError((error) =>
           TokenStorageError.make({
-            reason: `Failed to read tokens: ${error}`,
+            message: `Failed to read tokens: ${error.message}`,
           }),
         ),
         Effect.flatMap((content) =>
@@ -174,8 +175,8 @@ export class AuthService extends Context.Tag("@app/AuthService")<
         ),
         Effect.catchTag("TokenStorageError", (error) => {
           if (
-            error.reason.includes("NotFound") ||
-            error.reason.includes("ENOENT")
+            error.message.includes("NotFound") ||
+            error.message.includes("ENOENT")
           ) {
             return Effect.succeed(null);
           }
@@ -186,13 +187,13 @@ export class AuthService extends Context.Tag("@app/AuthService")<
       const clearTokens = fs.remove(tokenStoragePath).pipe(
         Effect.mapError((error) =>
           TokenStorageError.make({
-            reason: `Failed to delete tokens: ${error}`,
+            message: `Failed to delete tokens: ${error.message}`,
           }),
         ),
         Effect.catchTag("TokenStorageError", (error) => {
           if (
-            error.reason.includes("NotFound") ||
-            error.reason.includes("ENOENT")
+            error.message.includes("NotFound") ||
+            error.message.includes("ENOENT")
           ) {
             return Effect.void;
           }
@@ -211,7 +212,7 @@ export class AuthService extends Context.Tag("@app/AuthService")<
         const tokensOpt = yield* Effect.map(loadTokens, Option.fromNullable);
         const currentTokens = Option.getOrThrowWith(tokensOpt, () =>
           TokenRefreshError.make({
-            reason: "No stored tokens found - please login first",
+            message: "No stored tokens found - please login first",
           }),
         );
 
@@ -258,7 +259,7 @@ export class AuthService extends Context.Tag("@app/AuthService")<
 
           const tokens = Option.getOrThrowWith(tokensOpt, () =>
             TokenRefreshError.make({
-              reason: "Not authenticated - please run musync auth login",
+              message: "Not authenticated - please run musync auth login",
             }),
           );
 
