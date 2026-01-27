@@ -31,13 +31,13 @@ const formatError: (error: AppError) => FormattedError =
     }),
     TokenStorageError: (e) => ({
       title: "Token storage error",
-      message: e.reason,
+      message: e.message,
       suggestion: "Try logging in again with 'musync auth login'.",
       exitCode: 2,
     }),
     PKCEGenerationError: (e) => ({
       title: "Authentication setup failed",
-      message: e.reason,
+      message: e.message,
       exitCode: 1,
     }),
     TokenExchangeError: () => ({
@@ -71,7 +71,7 @@ const formatError: (error: AppError) => FormattedError =
     }),
     FileSystemError: (e) => ({
       title: "File system error",
-      message: e.reason,
+      message: e.message,
       exitCode: 1,
     }),
     TokenRefreshError: () => ({
@@ -124,19 +124,19 @@ const formatError: (error: AppError) => FormattedError =
     // Database errors
     DatabaseError: (e) => ({
       title: "Database error",
-      message: e.reason,
+      message: e.message,
       exitCode: 1,
     }),
     DatabaseMigrationError: (e) => ({
       title: "Database migration error",
-      message: e.reason,
+      message: e.message,
       exitCode: 1,
     }),
 
     // Song extraction errors
     SongExtractionError: (e) => ({
       title: "Metadata extraction error",
-      message: e.reason,
+      message: e.message,
       suggestion: "The AI service may be unavailable. Try again later.",
       exitCode: 1,
     }),

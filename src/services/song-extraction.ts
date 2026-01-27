@@ -42,7 +42,7 @@ Rules:
             }),
           catch: (cause) =>
             SongExtractionError.make({
-              reason: `Failed to extract metadata via AI SDK: ${String(cause)}`,
+              message: `Failed to extract metadata via AI SDK: ${String(cause)}`,
               cause,
               isRateLimit:
                 (typeof cause === "object" &&
@@ -56,7 +56,7 @@ Rules:
         return yield* Schema.decodeUnknown(SongExtraction)(result.output).pipe(
           Effect.mapError((e) =>
             SongExtractionError.make({
-              reason: `Failed to parse AI output: ${e.message}`,
+              message: `Failed to parse AI output: ${e.message}`,
               cause: e,
             }),
           ),

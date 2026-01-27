@@ -3,20 +3,22 @@ import { Schema } from "effect";
 export class PKCEGenerationError extends Schema.TaggedError<PKCEGenerationError>()(
   "PKCEGenerationError",
   {
-    reason: Schema.String,
+    message: Schema.String,
   },
 ) {}
 
 export class TokenExchangeError extends Schema.TaggedError<TokenExchangeError>()(
   "TokenExchangeError",
   {
-    error: Schema.Defect,
+    message: Schema.String,
+    cause: Schema.optional(Schema.Unknown),
   },
 ) {}
 
 export class InvalidAuthorizationCodeError extends Schema.TaggedError<InvalidAuthorizationCodeError>()(
   "InvalidAuthorizationCodeError",
   {
+    message: Schema.String,
     statusCode: Schema.Number,
     body: Schema.String,
   },
@@ -25,21 +27,24 @@ export class InvalidAuthorizationCodeError extends Schema.TaggedError<InvalidAut
 export class BrowserOpenError extends Schema.TaggedError<BrowserOpenError>()(
   "BrowserOpenError",
   {
+    message: Schema.String,
     url: Schema.String,
-    error: Schema.Defect,
+    cause: Schema.optional(Schema.Unknown),
   },
 ) {}
 
 export class ServerStartError extends Schema.TaggedError<ServerStartError>()(
   "ServerStartError",
   {
-    error: Schema.Defect,
+    message: Schema.String,
+    cause: Schema.optional(Schema.Unknown),
   },
 ) {}
 
 export class AuthTimeoutError extends Schema.TaggedError<AuthTimeoutError>()(
   "AuthTimeoutError",
   {
+    message: Schema.String,
     timeoutMs: Schema.Number,
   },
 ) {}
@@ -47,20 +52,20 @@ export class AuthTimeoutError extends Schema.TaggedError<AuthTimeoutError>()(
 export class FileSystemError extends Schema.TaggedError<FileSystemError>()(
   "FileSystemError",
   {
-    reason: Schema.String,
+    message: Schema.String,
   },
 ) {}
 
 export class TokenStorageError extends Schema.TaggedError<TokenStorageError>()(
   "TokenStorageError",
   {
-    reason: Schema.String,
+    message: Schema.String,
   },
 ) {}
 
 export class TokenRefreshError extends Schema.TaggedError<TokenRefreshError>()(
   "TokenRefreshError",
   {
-    reason: Schema.String,
+    message: Schema.String,
   },
 ) {}
