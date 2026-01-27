@@ -103,3 +103,8 @@ DEBUG=1 musync sync
 # Use custom data directory
 XDG_DATA_HOME=/custom/path musync sync
 ```
+
+### TODOS
+
+- Add config json file.
+- Config the cerebras model through the json file.
