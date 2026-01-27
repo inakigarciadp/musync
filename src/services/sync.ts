@@ -132,7 +132,7 @@ export class SyncService extends Effect.Service<SyncService>()("sync", {
             .pipe(
               Effect.tapError((e) =>
                 Effect.logWarning(
-                  `Retrying extraction for ${track.title} due to error: ${e.reason}`,
+                  `Retrying extraction for ${track.title} due to error: ${e.message}`,
                 ),
               ),
               Effect.retry(
@@ -163,11 +163,16 @@ export class SyncService extends Effect.Service<SyncService>()("sync", {
               .run();
           });
         }).pipe(
-          Effect.catchAll((e) =>
-            Effect.logError(
-              `Extraction permanently failed for ${track.title} after retries: ${e.reason}`,
-            ),
-          ),
+          Effect.catchTags({
+            SongExtractionError: (e) =>
+              Effect.logError(
+                `Extraction permanently failed for ${track.title} after retries: ${e.message}`,
+              ),
+            DatabaseError: (e) =>
+              Effect.logError(
+                `Database error for ${track.title} after retries: ${e.message}`,
+              ),
+          }),
         );
       }
 
