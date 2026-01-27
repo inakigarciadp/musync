@@ -127,11 +127,6 @@ const formatError: (error: AppError) => FormattedError =
       message: e.message,
       exitCode: 1,
     }),
-    DatabaseMigrationError: (e) => ({
-      title: "Database migration error",
-      message: e.message,
-      exitCode: 1,
-    }),
 
     // Song extraction errors
     SongExtractionError: (e) => ({

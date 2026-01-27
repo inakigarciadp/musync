@@ -17,7 +17,7 @@ import type {
   TokenStorageError,
 } from "./auth";
 // Database errors
-import type { DatabaseError, DatabaseMigrationError } from "./database";
+import type { DatabaseError } from "./database";
 // Song extraction errors
 import type { SongExtractionError } from "./song-extraction";
 // YouTube errors
@@ -62,7 +62,6 @@ export type AppError =
   | YouTubeApiError
   // Database errors
   | DatabaseError
-  | DatabaseMigrationError
   // Song extraction errors
   | SongExtractionError
   // HTTP errors (from @effect/platform)
