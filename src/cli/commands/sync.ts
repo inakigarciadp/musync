@@ -15,9 +15,11 @@ export const syncCommand = Command.make(
 
     // 3. For each track, we will use a service to find the song in the download sources (maybe we will use GPT OSS 120B for that as well) and update the track record with the download URL.
 
-    // 4. Then, we will download all new tracks using the download URLs and store them in our local storage.
+    // 4. We query the database for matches that need manual review (there is a database column for that) and prompt the user for them.
 
-    // 5. Finally, we will generate the playlists files (M3U8) for the local media player to use.
+    // 5. Then, we will download all new tracks using the download URLs and store them in our local storage.
+
+    // 6. Finally, we will generate the playlists files (M3U8) for the local media player to use.
 
     const syncService = yield* SyncService;
 
