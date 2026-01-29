@@ -5,18 +5,18 @@ import { SongExtractionError } from "../domain/errors/song-extraction";
 import { SongExtraction } from "../domain/models/song";
 
 export class SongExtractionService extends Effect.Service<SongExtractionService>()(
-  "extraction",
+  "SongExtractionService",
   {
+    accessors: true,
     effect: Effect.gen(function* () {
       const apiKey = yield* Config.redacted("CEREBRAS_API_KEY");
       const cerebras = createCerebras({
         apiKey: Redacted.value(apiKey),
       });
 
-      const extractSongMetadata = Effect.fnUntraced(function* (
-        title: string,
-        channelTitle: string | null,
-      ) {
+      const extractSongMetadata = Effect.fn(
+        "SongExtractionService.extractSongMetadata",
+      )(function* (title: string, channelTitle: string | null) {
         const effectJsonSchema = JSONSchema.make(SongExtraction);
 
         const result = yield* Effect.tryPromise({
