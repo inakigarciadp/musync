@@ -40,11 +40,7 @@ export class ConfigService extends Effect.Service<ConfigService>()(
         clientId: config.clientId,
         clientSecret: config.clientSecret,
         tokenStoragePath: config.tokenStoragePath,
-      } satisfies {
-        readonly clientId: GoogleClientId;
-        readonly clientSecret: Redacted.Redacted;
-        readonly tokenStoragePath: string;
-      };
+      }
     }),
   },
 ) {}
