@@ -28,6 +28,7 @@ export class PathsService extends Effect.Service<PathsService>()(
             Effect.mapError((error) =>
               FileSystemError.make({
                 message: `Failed to create app data directory: ${error.message}`,
+                path: dir,
               }),
             ),
           );

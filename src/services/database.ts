@@ -57,7 +57,11 @@ export class DatabaseService extends Effect.Service<DatabaseService>()(
             db.run(`PRAGMA mmap_size = 268435456;`),
           ]),
         catch: (cause) =>
-          DatabaseError.make({ message: "Failed to set PRAGMA", cause }),
+          DatabaseError.make({
+            message: "Failed to set PRAGMA",
+            cause,
+            operation: "SET_PRAGMA",
+          }),
       });
 
       // Execute function - wraps regular db calls
@@ -66,7 +70,11 @@ export class DatabaseService extends Effect.Service<DatabaseService>()(
           Effect.tryPromise({
             try: () => fn(db),
             catch: (cause) => {
-              return DatabaseError.make({ message: "Query failed", cause });
+              return DatabaseError.make({
+                message: "Query failed",
+                cause,
+                operation: "EXECUTE",
+              });
             },
           }),
       );
@@ -100,6 +108,7 @@ export class DatabaseService extends Effect.Service<DatabaseService>()(
                         return DatabaseError.make({
                           message: "Transaction query failed",
                           cause,
+                          operation: "TRANSACTION_QUERY",
                         });
                       },
                     });
@@ -143,6 +152,7 @@ export class DatabaseService extends Effect.Service<DatabaseService>()(
                       DatabaseError.make({
                         message: "Transaction failed",
                         cause,
+                        operation: "TRANSACTION",
                       }),
                     ),
                   );
