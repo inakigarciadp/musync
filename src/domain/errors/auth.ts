@@ -53,6 +53,7 @@ export class FileSystemError extends Schema.TaggedError<FileSystemError>()(
   "FileSystemError",
   {
     message: Schema.String,
+    path: Schema.optional(Schema.String),
   },
 ) {}
 
@@ -60,6 +61,7 @@ export class TokenStorageError extends Schema.TaggedError<TokenStorageError>()(
   "TokenStorageError",
   {
     message: Schema.String,
+    path: Schema.optional(Schema.String),
   },
 ) {}
 
