@@ -21,18 +21,7 @@ import {
 } from "../domain/models/youtube/playlist";
 import { TrackListResponse } from "../domain/models/youtube/tracks";
 
-const handleHttpError = (
-  error: HttpClientError,
-): Effect.Effect<
-  never,
-  | YouTubeApiError
-  | YouTubeNetworkError
-  | AuthenticationRequiredError
-  | RateLimitError
-  | ResourceNotFoundError
-  | YouTubeServiceUnavailableError,
-  never
-> => {
+const handleHttpError = (error: HttpClientError) => {
   if (error._tag === "ResponseError") {
     return Match.value(error.response.status).pipe(
       Match.when(401, () =>

@@ -1,4 +1,4 @@
-import { Console, type Effect } from "effect";
+import { Console } from "effect";
 
-export const formatJson = <T>(data: T): Effect.Effect<void> =>
+export const formatJson = <T>(data: T) =>
   Console.log(JSON.stringify(data, null, 2));

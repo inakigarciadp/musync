@@ -5,7 +5,7 @@ import {
   HttpServerResponse,
 } from "@effect/platform";
 import { BunHttpServer } from "@effect/platform-bun";
-import { Context, Effect, Layer, Queue, type Scope } from "effect";
+import { Context, Effect, Layer, Queue } from "effect";
 import { ServerStartError } from "../../domain/errors/auth";
 
 class CallbackQueue extends Context.Tag("@oauth/callback-queue")<
@@ -41,11 +41,7 @@ const handleCallback = Effect.gen(function* () {
   );
 });
 
-export const acquireCallbackServer: Effect.Effect<
-  { port: number; queue: Queue.Queue<string> },
-  ServerStartError,
-  Scope.Scope
-> = Effect.gen(function* () {
+export const acquireCallbackServer = Effect.gen(function* () {
   const queue = yield* Effect.acquireRelease(Queue.unbounded<string>(), (q) =>
     Queue.shutdown(q),
   );

@@ -1,4 +1,4 @@
-import { type Effect, Match } from "effect";
+import { Match } from "effect";
 import type { Format } from "../../domain/models/format";
 import type { PlaylistListResponse } from "../../domain/models/youtube/playlist";
 import type { TrackListResponse } from "../../domain/models/youtube/tracks";
@@ -11,7 +11,7 @@ export type { Format } from "../../domain/models/format";
 export const formatPlaylists = (
   response: PlaylistListResponse,
   format: Format,
-): Effect.Effect<void> =>
+) =>
   Match.value(format).pipe(
     Match.when("json", () => formatJson(response)),
     Match.when("table", () => formatPlaylistTable(response)),
@@ -19,10 +19,7 @@ export const formatPlaylists = (
     Match.exhaustive,
   );
 
-export const formatTracks = (
-  response: TrackListResponse,
-  format: Format,
-): Effect.Effect<void> =>
+export const formatTracks = (response: TrackListResponse, format: Format) =>
   Match.value(format).pipe(
     Match.when("json", () => formatJson(response)),
     Match.when("table", () => formatTrackTable(response)),
