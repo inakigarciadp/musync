@@ -50,6 +50,7 @@ Rules:
                   "statusCode" in cause &&
                   cause.statusCode === 429) ||
                 String(cause).includes("limit exceeded"),
+              trackTitle: title,
             }),
         });
 
@@ -58,6 +59,7 @@ Rules:
             SongExtractionError.make({
               message: `Failed to parse AI output: ${e.message}`,
               cause: e,
+              trackTitle: title,
             }),
           ),
         );
