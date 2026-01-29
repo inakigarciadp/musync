@@ -26,6 +26,8 @@ export class RateLimitError extends Schema.TaggedError<RateLimitError>()(
   "RateLimitError",
   {
     message: Schema.String,
+    retryAfter: Schema.optional(Schema.Number),
+    retryable: Schema.optionalWith(Schema.Boolean, { default: () => true }),
   },
 ) {}
 
