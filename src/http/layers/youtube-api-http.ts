@@ -16,7 +16,7 @@ export const YouTubeApiHttpClientLive = Layer.effect(
       // Convert non-2xx responses to ResponseError so they're caught by handleHttpError
       HttpClient.filterStatusOk,
       HttpClient.mapRequestEffect(
-        Effect.fnUntraced(function* (request) {
+        Effect.fn("YouTubeApiHttpClient.addAuth")(function* (request) {
           const accessToken = yield* Effect.option(auth.getAccessToken());
           if (Option.isNone(accessToken)) {
             return request;
