@@ -154,11 +154,12 @@ export class AuthService extends Effect.Service<AuthService>()("AuthService", {
       "AuthService.refreshTokensInternal",
     )(function* () {
       const tokensOpt = yield* Effect.map(loadTokens, Option.fromNullable);
-      const currentTokens = Option.getOrThrowWith(tokensOpt, () =>
-        TokenRefreshError.make({
+      if (Option.isNone(tokensOpt)) {
+        return yield* TokenRefreshError.make({
           message: "No stored tokens found - please login first",
-        }),
-      );
+        });
+      }
+      const currentTokens = tokensOpt.value;
 
       const clientSecret = config.clientSecret;
 
@@ -201,11 +202,13 @@ export class AuthService extends Effect.Service<AuthService>()("AuthService", {
           }
         }
 
-        const tokens = Option.getOrThrowWith(tokensOpt, () =>
-          TokenRefreshError.make({
+        if (Option.isNone(tokensOpt)) {
+          return yield* TokenRefreshError.make({
             message: "Not authenticated - please run musync auth login",
-          }),
-        );
+          });
+        }
+
+        const tokens = tokensOpt.value;
 
         if (tokens.expiresAt.getTime() - now < FIVE_MINUTES) {
           return yield* refreshSemaphore.withPermits(1)(
