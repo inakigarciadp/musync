@@ -216,57 +216,7 @@ export class YouTubeService extends Effect.Service<YouTubeService>()(
         listAllPlaylists,
         listAllPlaylistItems,
         listPlaylistItems,
-      } satisfies {
-        readonly listPlaylists: (
-          pageToken?: string,
-          maxResults?: MaxResults,
-        ) => Effect.Effect<
-          PlaylistListResponse,
-          | YouTubeApiError
-          | YouTubeNetworkError
-          | AuthenticationRequiredError
-          | RateLimitError
-          | ResourceNotFoundError
-          | YouTubeServiceUnavailableError
-          | ParseError
-        >;
-        readonly listAllPlaylists: () => Effect.Effect<
-          PlaylistListResponse,
-          | YouTubeApiError
-          | YouTubeNetworkError
-          | AuthenticationRequiredError
-          | RateLimitError
-          | ResourceNotFoundError
-          | YouTubeServiceUnavailableError
-          | ParseError
-        >;
-        readonly listAllPlaylistItems: (
-          playlistId: PlaylistId,
-        ) => Effect.Effect<
-          TrackListResponse,
-          | YouTubeApiError
-          | YouTubeNetworkError
-          | AuthenticationRequiredError
-          | RateLimitError
-          | ResourceNotFoundError
-          | YouTubeServiceUnavailableError
-          | ParseError
-        >;
-        readonly listPlaylistItems: (
-          playlistId: PlaylistId,
-          pageToken?: string,
-          maxResults?: MaxResults,
-        ) => Effect.Effect<
-          TrackListResponse,
-          | YouTubeApiError
-          | YouTubeNetworkError
-          | AuthenticationRequiredError
-          | RateLimitError
-          | ResourceNotFoundError
-          | YouTubeServiceUnavailableError
-          | ParseError
-        >;
-      };
+      }
     }),
   },
 ) {}

@@ -258,49 +258,6 @@ export class AuthService extends Effect.Service<AuthService>()("AuthService", {
       clearTokens: () => clearTokens,
       refreshTokens,
       getAccessToken,
-    } satisfies {
-      readonly generatePKCEPair: () => Effect.Effect<
-        PKCEPair,
-        PKCEGenerationError | ParseError
-      >;
-      readonly buildAuthorizationUrl: (params: {
-        codeChallenge: string;
-        state: string;
-        redirectUri: string;
-      }) => Effect.Effect<string>;
-      readonly exchangeCodeForTokens: (
-        code: string,
-        codeVerifier: string,
-        redirectUri: string,
-      ) => Effect.Effect<
-        TokenResponse,
-        | TokenExchangeError
-        | InvalidAuthorizationCodeError
-        | HttpClientError.HttpClientError
-        | ParseError
-      >;
-      readonly storeTokens: (
-        tokens: StoredTokens,
-      ) => Effect.Effect<void, TokenStorageError | ParseError>;
-      readonly loadTokens: () => Effect.Effect<
-        StoredTokens | null,
-        TokenStorageError | ParseError
-      >;
-      readonly clearTokens: () => Effect.Effect<void, TokenStorageError>;
-      readonly refreshTokens: () => Effect.Effect<
-        StoredTokens,
-        | TokenRefreshError
-        | TokenStorageError
-        | HttpClientError.HttpClientError
-        | ParseError
-      >;
-      readonly getAccessToken: () => Effect.Effect<
-        string,
-        | TokenRefreshError
-        | TokenStorageError
-        | HttpClientError.HttpClientError
-        | ParseError
-      >;
-    };
+    }
   }),
 }) {}
