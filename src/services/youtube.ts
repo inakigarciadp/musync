@@ -4,7 +4,7 @@ import {
   HttpClientResponse,
 } from "@effect/platform";
 import type { HttpClientError } from "@effect/platform/HttpClientError";
-import { Context, Effect, Layer, Match } from "effect";
+import { Effect, Match } from "effect";
 import type { ParseError } from "effect/ParseResult";
 import {
   AuthenticationRequiredError,
@@ -92,66 +92,14 @@ const handleHttpError = (
   );
 };
 
-export class YouTubeService extends Context.Tag("@app/YouTubeService")<
-  YouTubeService,
+export class YouTubeService extends Effect.Service<YouTubeService>()(
+  "YouTubeService",
   {
-    readonly listPlaylists: (
-      pageToken?: string,
-      maxResults?: MaxResults,
-    ) => Effect.Effect<
-      PlaylistListResponse,
-      | YouTubeApiError
-      | YouTubeNetworkError
-      | AuthenticationRequiredError
-      | RateLimitError
-      | ResourceNotFoundError
-      | YouTubeServiceUnavailableError
-      | ParseError
-    >;
-    readonly listAllPlaylists: () => Effect.Effect<
-      PlaylistListResponse,
-      | YouTubeApiError
-      | YouTubeNetworkError
-      | AuthenticationRequiredError
-      | RateLimitError
-      | ResourceNotFoundError
-      | YouTubeServiceUnavailableError
-      | ParseError
-    >;
-    readonly listAllPlaylistItems: (
-      playlistId: PlaylistId,
-    ) => Effect.Effect<
-      TrackListResponse,
-      | YouTubeApiError
-      | YouTubeNetworkError
-      | AuthenticationRequiredError
-      | RateLimitError
-      | ResourceNotFoundError
-      | YouTubeServiceUnavailableError
-      | ParseError
-    >;
-    readonly listPlaylistItems: (
-      playlistId: PlaylistId,
-      pageToken?: string,
-      maxResults?: MaxResults,
-    ) => Effect.Effect<
-      TrackListResponse,
-      | YouTubeApiError
-      | YouTubeNetworkError
-      | AuthenticationRequiredError
-      | RateLimitError
-      | ResourceNotFoundError
-      | YouTubeServiceUnavailableError
-      | ParseError
-    >;
-  }
->() {
-  static readonly layer = Layer.effect(
-    YouTubeService,
-    Effect.gen(function* () {
-      const http = yield* HttpClient.HttpClient;
+    accessors: true,
+    effect: Effect.gen(function* () {
+      const http = yield* HttpClient.HttpClient; // Infrastructure - leaked OK
 
-      const listPlaylists = Effect.fnUntraced(
+      const listPlaylists = Effect.fn("YouTubeService.listPlaylists")(
         function* (pageToken?: string, maxResults?: MaxResults) {
           const request = HttpClientRequest.get("/playlists").pipe(
             HttpClientRequest.setUrlParams({
@@ -176,34 +124,36 @@ export class YouTubeService extends Context.Tag("@app/YouTubeService")<
           ),
       );
 
-      const listAllPlaylists = Effect.fnUntraced(function* () {
-        const allItems = [];
-        let pageToken: string | undefined;
-        let lastPageInfo: PageInfo | undefined;
+      const listAllPlaylists = Effect.fn("YouTubeService.listAllPlaylists")(
+        function* () {
+          const allItems = [];
+          let pageToken: string | undefined;
+          let lastPageInfo: PageInfo | undefined;
 
-        while (true) {
-          const response = yield* listPlaylists(pageToken, 50 as MaxResults);
-          allItems.push(...response.items);
-          lastPageInfo = response.pageInfo;
+          while (true) {
+            const response = yield* listPlaylists(pageToken, 50 as MaxResults);
+            allItems.push(...response.items);
+            lastPageInfo = response.pageInfo;
 
-          pageToken = response.nextPageToken;
-          if (!pageToken) {
-            break;
+            pageToken = response.nextPageToken;
+            if (!pageToken) {
+              break;
+            }
           }
-        }
 
-        return new PlaylistListResponse({
-          kind: "youtube#playlistListResponse",
-          etag: undefined,
-          pageInfo: lastPageInfo,
-          items: allItems,
-          nextPageToken: undefined,
-        });
-      });
+          return new PlaylistListResponse({
+            kind: "youtube#playlistListResponse",
+            etag: undefined,
+            pageInfo: lastPageInfo,
+            items: allItems,
+            nextPageToken: undefined,
+          });
+        },
+      );
 
-      const listAllPlaylistItems = Effect.fnUntraced(function* (
-        playlistId: PlaylistId,
-      ) {
+      const listAllPlaylistItems = Effect.fn(
+        "YouTubeService.listAllPlaylistItems",
+      )(function* (playlistId: PlaylistId) {
         const allItems = [];
         let pageToken: string | undefined;
         let lastPageInfo: PageInfo | undefined;
@@ -232,7 +182,7 @@ export class YouTubeService extends Context.Tag("@app/YouTubeService")<
         });
       });
 
-      const listPlaylistItems = Effect.fnUntraced(
+      const listPlaylistItems = Effect.fn("YouTubeService.listPlaylistItems")(
         function* (
           playlistId: PlaylistId,
           pageToken?: string,
@@ -261,12 +211,62 @@ export class YouTubeService extends Context.Tag("@app/YouTubeService")<
           ),
       );
 
-      return YouTubeService.of({
+      return {
         listPlaylists,
         listAllPlaylists,
         listAllPlaylistItems,
         listPlaylistItems,
-      });
+      } satisfies {
+        readonly listPlaylists: (
+          pageToken?: string,
+          maxResults?: MaxResults,
+        ) => Effect.Effect<
+          PlaylistListResponse,
+          | YouTubeApiError
+          | YouTubeNetworkError
+          | AuthenticationRequiredError
+          | RateLimitError
+          | ResourceNotFoundError
+          | YouTubeServiceUnavailableError
+          | ParseError
+        >;
+        readonly listAllPlaylists: () => Effect.Effect<
+          PlaylistListResponse,
+          | YouTubeApiError
+          | YouTubeNetworkError
+          | AuthenticationRequiredError
+          | RateLimitError
+          | ResourceNotFoundError
+          | YouTubeServiceUnavailableError
+          | ParseError
+        >;
+        readonly listAllPlaylistItems: (
+          playlistId: PlaylistId,
+        ) => Effect.Effect<
+          TrackListResponse,
+          | YouTubeApiError
+          | YouTubeNetworkError
+          | AuthenticationRequiredError
+          | RateLimitError
+          | ResourceNotFoundError
+          | YouTubeServiceUnavailableError
+          | ParseError
+        >;
+        readonly listPlaylistItems: (
+          playlistId: PlaylistId,
+          pageToken?: string,
+          maxResults?: MaxResults,
+        ) => Effect.Effect<
+          TrackListResponse,
+          | YouTubeApiError
+          | YouTubeNetworkError
+          | AuthenticationRequiredError
+          | RateLimitError
+          | ResourceNotFoundError
+          | YouTubeServiceUnavailableError
+          | ParseError
+        >;
+      };
     }),
-  );
-}
+  },
+) {}
