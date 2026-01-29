@@ -21,9 +21,9 @@ export const syncCommand = Command.make(
 
     const syncService = yield* SyncService;
 
-    yield* syncService.syncPlaylistsToDb;
+    yield* syncService.syncPlaylistsToDb();
 
-    yield* syncService.extractSongsWithAi;
+    yield* syncService.extractSongsWithAi();
 
     yield* Effect.logInfo("Sync process completed");
   }),
