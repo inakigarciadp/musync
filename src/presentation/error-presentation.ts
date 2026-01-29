@@ -228,6 +228,18 @@ const formatError: (error: AppError) => FormattedError =
       message: `A configuration error occurred: ${e.message}`,
       exitCode: 1,
     }),
+
+    // Interactive errors (user cancelled prompt)
+    UserInterruptError: () => ({
+      title: "Operation cancelled",
+      message: "The operation was cancelled by the user.",
+      exitCode: 130, // Standard SIGINT exit code
+    }),
+    QuitException: () => ({
+      title: "Operation cancelled",
+      message: "The operation was cancelled by the user (Ctrl+C).",
+      exitCode: 130, // Standard SIGINT exit code
+    }),
   });
 
 /**

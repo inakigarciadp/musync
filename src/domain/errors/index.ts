@@ -1,5 +1,6 @@
 import type { ValidationError as CliValidationError } from "@effect/cli/ValidationError";
 import type { HttpClientError } from "@effect/platform/HttpClientError";
+import type { QuitException } from "@effect/platform/Terminal";
 import { Schema } from "effect";
 import type { ConfigError } from "effect/ConfigError";
 import type { ParseError } from "effect/ParseResult";
@@ -18,6 +19,8 @@ import type {
 } from "./auth";
 // Database errors
 import type { DatabaseError } from "./database";
+// Interactive prompt errors
+import type { UserInterruptError } from "./interactive";
 // Song extraction errors
 import type { SongExtractionError } from "./song-extraction";
 // YouTube errors
@@ -72,4 +75,8 @@ export type AppError =
   | ConfigError
   // General errors
   | NotImplementedError
-  | ParseError;
+  | ParseError
+  // Interactive errors
+  | UserInterruptError
+  // Terminal prompt errors (Ctrl+C during interactive prompts)
+  | QuitException;
