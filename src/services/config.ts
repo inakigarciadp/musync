@@ -1,5 +1,5 @@
-import { Context, Effect, Layer, type Redacted, Schema } from "effect";
-import { getAppDataDir } from "../infrastructure/paths/xdg";
+import { Effect, type Redacted, Schema } from "effect";
+import { PathsService } from "./paths";
 
 const GoogleClientId = Schema.String.pipe(
   Schema.minLength(1),
@@ -8,29 +8,43 @@ const GoogleClientId = Schema.String.pipe(
 );
 type GoogleClientId = typeof GoogleClientId.Type;
 
-export class ConfigService extends Context.Tag("@app/ConfigService")<
-  ConfigService,
+export class ConfigService extends Effect.Service<ConfigService>()(
+  "ConfigService",
   {
-    readonly clientId: GoogleClientId;
-    readonly clientSecret: Redacted.Redacted;
-    readonly tokenStoragePath: string;
-  }
->() {
-  static readonly layer = Layer.effect(
-    ConfigService,
-    Effect.gen(function* () {
-      const clientId = yield* Schema.Config("GOOGLE_CLIENT_ID", GoogleClientId);
-      const clientSecret = yield* Schema.Config(
-        "GOOGLE_CLIENT_SECRET",
-        Schema.Redacted(Schema.String.pipe(Schema.minLength(1))),
-      );
-      const dataDir = yield* getAppDataDir();
+    accessors: true,
+    dependencies: [PathsService.Default],
+    effect: Effect.gen(function* () {
+      const paths = yield* PathsService;
 
-      return ConfigService.of({
-        clientId,
-        clientSecret,
-        tokenStoragePath: `${dataDir}/tokens.json`,
+      const getConfig = Effect.fn("ConfigService.getConfig")(function* () {
+        const clientId = yield* Schema.Config(
+          "GOOGLE_CLIENT_ID",
+          GoogleClientId,
+        );
+        const clientSecret = yield* Schema.Config(
+          "GOOGLE_CLIENT_SECRET",
+          Schema.Redacted(Schema.String.pipe(Schema.minLength(1))),
+        );
+        const dataDir = yield* paths.getAppDataDir();
+
+        return {
+          clientId,
+          clientSecret,
+          tokenStoragePath: `${dataDir}/tokens.json`,
+        };
       });
+
+      // Return the config values directly
+      const config = yield* getConfig();
+      return {
+        clientId: config.clientId,
+        clientSecret: config.clientSecret,
+        tokenStoragePath: config.tokenStoragePath,
+      } satisfies {
+        readonly clientId: GoogleClientId;
+        readonly clientSecret: Redacted.Redacted;
+        readonly tokenStoragePath: string;
+      };
     }),
-  );
-}
+  },
+) {}
