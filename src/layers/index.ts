@@ -6,59 +6,75 @@ import { YouTubeApiHttpClientLive } from "../http/layers/youtube-api-http";
 import { AuthService } from "../services/auth";
 import { ConfigService } from "../services/config";
 import { DatabaseService } from "../services/database";
+import { PathsService } from "../services/paths";
 import { SongExtractionService } from "../services/song-extraction";
 import { SyncService } from "../services/sync";
 import { YouTubeService } from "../services/youtube";
 
+// Infrastructure - provided at app root
 const configProviderLayer = Layer.setConfigProvider(ConfigProvider.fromEnv());
 
-const configServiceLayer = ConfigService.layer.pipe(
-  Layer.provide(configProviderLayer),
+// OAuth HTTP client (no service deps - just base URL config)
+const oauthHttpClientLayer = OAuthHttpClientLive.pipe(
+  Layer.provide(FetchHttpClient.layer),
+);
+
+// Services that depend only on infrastructure
+const pathsServiceLayer = PathsService.Default.pipe(
   Layer.provide(BunFileSystem.layer),
+  Layer.provide(configProviderLayer),
+);
+
+const configServiceLayer = ConfigService.Default.pipe(
+  Layer.provide(pathsServiceLayer),
+  Layer.provide(configProviderLayer),
 );
 
 const databaseServiceLayer = DatabaseService.Default.pipe(
+  Layer.provide(pathsServiceLayer),
   Layer.provide(configProviderLayer),
-  Layer.provide(BunFileSystem.layer),
 );
 
 const extractionServiceLayer = SongExtractionService.Default.pipe(
   Layer.provide(configProviderLayer),
 );
 
-// OAuth HTTP client with base URL configured
-const oauthHttpClientLayer = OAuthHttpClientLive.pipe(
-  Layer.provide(FetchHttpClient.layer),
-);
-
-// Base layer providing AuthService with all its dependencies
-const authServiceLayer = AuthService.layer.pipe(
+// AuthService depends on ConfigService
+const authServiceLayer = AuthService.Default.pipe(
   Layer.provide(configServiceLayer),
   Layer.provide(oauthHttpClientLayer),
   Layer.provide(BunFileSystem.layer),
 );
 
-// Compose the authenticated YouTube HTTP client with AuthService
+// YouTube API HTTP client depends on AuthService for token injection
 const youtubeHttpClientLayer = YouTubeApiHttpClientLive.pipe(
   Layer.provide(authServiceLayer),
   Layer.provide(FetchHttpClient.layer),
 );
 
-// YouTubeService layer using the authenticated HTTP client
-const youtubeServiceLayer = YouTubeService.layer.pipe(
+// YouTubeService uses the authenticated HTTP client
+const youtubeServiceLayer = YouTubeService.Default.pipe(
   Layer.provide(youtubeHttpClientLayer),
 );
 
+// SyncService depends on multiple services
 const syncServiceLayer = SyncService.Default.pipe(
   Layer.provide(databaseServiceLayer),
   Layer.provide(youtubeServiceLayer),
   Layer.provide(extractionServiceLayer),
 );
 
-// Export both AuthService and YouTubeService for use by CLI commands
+// Infrastructure layers - provided at the bottom to close all leaked dependencies
+const infrastructureLayer = Layer.mergeAll(
+  BunFileSystem.layer,
+  FetchHttpClient.layer,
+  configProviderLayer,
+);
+
+// Export combined layer for CLI commands
 export const AppLayer = Layer.mergeAll(
   authServiceLayer,
   youtubeServiceLayer,
   databaseServiceLayer,
   syncServiceLayer,
-);
+).pipe(Layer.provide(infrastructureLayer));
