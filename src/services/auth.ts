@@ -103,6 +103,7 @@ export class AuthService extends Effect.Service<AuthService>()("AuthService", {
           Effect.mapError((error: PlatformError) =>
             TokenStorageError.make({
               message: `Failed to store tokens: ${error.message}`,
+              path: tokenStoragePath,
             }),
           ),
         );
@@ -112,6 +113,7 @@ export class AuthService extends Effect.Service<AuthService>()("AuthService", {
       Effect.mapError((error) =>
         TokenStorageError.make({
           message: `Failed to read tokens: ${error.message}`,
+          path: tokenStoragePath,
         }),
       ),
       Effect.flatMap((content) =>
@@ -132,6 +134,7 @@ export class AuthService extends Effect.Service<AuthService>()("AuthService", {
       Effect.mapError((error) =>
         TokenStorageError.make({
           message: `Failed to delete tokens: ${error.message}`,
+          path: tokenStoragePath,
         }),
       ),
       Effect.catchTag("TokenStorageError", (error) => {
