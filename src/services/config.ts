@@ -1,4 +1,4 @@
-import { Effect, type Redacted, Schema } from "effect";
+import { Effect, Schema } from "effect";
 import { PathsService } from "./paths";
 
 const GoogleClientId = Schema.String.pipe(
@@ -6,7 +6,6 @@ const GoogleClientId = Schema.String.pipe(
   Schema.pattern(/^[0-9]+-[a-zA-Z0-9_.-]+\.apps\.googleusercontent\.com$/),
   Schema.brand("GoogleClientId"),
 );
-type GoogleClientId = typeof GoogleClientId.Type;
 
 export class ConfigService extends Effect.Service<ConfigService>()(
   "ConfigService",
@@ -40,7 +39,7 @@ export class ConfigService extends Effect.Service<ConfigService>()(
         clientId: config.clientId,
         clientSecret: config.clientSecret,
         tokenStoragePath: config.tokenStoragePath,
-      }
+      };
     }),
   },
 ) {}
