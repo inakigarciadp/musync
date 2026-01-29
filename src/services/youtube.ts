@@ -5,7 +5,6 @@ import {
 } from "@effect/platform";
 import type { HttpClientError } from "@effect/platform/HttpClientError";
 import { Effect, Match } from "effect";
-import type { ParseError } from "effect/ParseResult";
 import {
   AuthenticationRequiredError,
   RateLimitError,
@@ -216,7 +215,7 @@ export class YouTubeService extends Effect.Service<YouTubeService>()(
         listAllPlaylists,
         listAllPlaylistItems,
         listPlaylistItems,
-      }
+      };
     }),
   },
 ) {}

@@ -1,20 +1,12 @@
 import {
   FileSystem,
   HttpClient,
-  type HttpClientError,
   HttpClientRequest,
   HttpClientResponse,
 } from "@effect/platform";
 import type { PlatformError } from "@effect/platform/Error";
 import { Effect, Option, Redacted, Ref, Schema } from "effect";
-import type { ParseError } from "effect/ParseResult";
-import {
-  type InvalidAuthorizationCodeError,
-  type PKCEGenerationError,
-  type TokenExchangeError,
-  TokenRefreshError,
-  TokenStorageError,
-} from "../domain/errors/auth";
+import { TokenRefreshError, TokenStorageError } from "../domain/errors/auth";
 import {
   PKCEPair,
   StoredTokens,
@@ -258,6 +250,6 @@ export class AuthService extends Effect.Service<AuthService>()("AuthService", {
       clearTokens: () => clearTokens,
       refreshTokens,
       getAccessToken,
-    }
+    };
   }),
 }) {}
