@@ -17,9 +17,11 @@ export const syncCommand = Command.make(
 
     // 4. We query the database for matches that need manual review (there is a database column for that) and prompt the user for them.
 
-    // 5. Then, we will download all new tracks using the download URLs and store them in our local storage.
+    // 5. After we have the names for all tracks, we will go and find th download URLs for each track for next step. It will be done through https://lucida.to/ via scraping. Using the song name and the artist name we will search for the song, and pass the results to an AI model (GPT OSS 120B) to pick the best match and extract the download URL. If the AI can't give an answer, we will prompt the user for manual review.
 
-    // 6. Finally, we will generate the playlists files (M3U8) for the local media player to use.
+    // 6. Then, we will download all new tracks using the download URLs and store them in our local storage.
+
+    // 7. Finally, we will generate the playlists files (M3U8) for the local media player to use.
 
     const syncService = yield* SyncService;
 
