@@ -19,8 +19,12 @@ import type {
 } from "./auth";
 // Database errors
 import type { DatabaseError } from "./database";
+// Download URL matching errors
+import type { DownloadUrlMatchingError } from "./download-url-matching";
 // Interactive prompt errors
 import type { UserInterruptError } from "./interactive";
+// Lucida errors
+import type { LucidaParseError, LucidaSearchError } from "./lucida";
 // Song extraction errors
 import type { SongExtractionError } from "./song-extraction";
 // YouTube errors
@@ -65,6 +69,11 @@ export type AppError =
   | YouTubeApiError
   // Database errors
   | DatabaseError
+  // Download URL matching errors
+  | DownloadUrlMatchingError
+  // Lucida errors
+  | LucidaSearchError
+  | LucidaParseError
   // Song extraction errors
   | SongExtractionError
   // HTTP errors (from @effect/platform)
