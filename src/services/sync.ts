@@ -401,6 +401,9 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
 
         yield* Effect.logInfo("Finding download URLs for songs");
 
+        // Track skipped songs in memory to avoid re-fetching them in this run
+        const skippedTrackIds = new Set<string>();
+
         // Get count of songs needing download URL lookup
         const { total } = yield* runQuery(async (db) => {
           const result = await db
@@ -427,9 +430,9 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
         );
 
         while (true) {
-          // Get next song that needs download URL
+          // Get next song that needs download URL, excluding skipped ones
           const song = yield* runQuery(async (db) => {
-            return await db
+            const results = await db
               .select({
                 trackId: schema.songs.trackId,
                 songName: schema.songs.songName,
@@ -449,8 +452,10 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
                   eq(schema.songs.extractionState, "finalized"),
                 ),
               )
-              .limit(1)
-              .get();
+              .all();
+
+            // Filter out skipped tracks in memory
+            return results.find((r) => !skippedTrackIds.has(r.trackId)) ?? null;
           });
 
           // No more songs to process
@@ -566,8 +571,12 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
             });
             yield* Effect.logInfo(`Saved download URL for: ${song.songName}`);
           } else {
+            // Track skipped song to avoid re-fetching in this run
+            skippedTrackIds.add(song.trackId);
             yield* Effect.logInfo(`Skipped: ${song.songName}`);
           }
+          // just run one iteration for testing
+          // break;
         }
 
         yield* Effect.logInfo("Download URL lookup completed");
