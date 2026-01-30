@@ -25,11 +25,15 @@ export const syncCommand = Command.make(
 
     const syncService = yield* SyncService;
 
+    // Step 1-2: Sync playlists and extract song metadata
     yield* syncService.syncPlaylistsToDb();
-
     yield* syncService.extractSongsWithAi();
 
+    // Step 3-4: Handle manual review for song extraction
     yield* syncService.handleManualReview();
+
+    // Step 5: Find download URLs via lucida.to (prompts user inline if AI unsure)
+    yield* syncService.findDownloadUrls();
 
     yield* Effect.logInfo("Sync process completed");
   }),

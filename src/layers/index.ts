@@ -1,11 +1,14 @@
 import { FetchHttpClient } from "@effect/platform";
 import { BunFileSystem } from "@effect/platform-bun";
 import { ConfigProvider, Layer } from "effect";
+import { LucidaHttpClientLive } from "../http/layers/lucida-http";
 import { OAuthHttpClientLive } from "../http/layers/oauth-http";
 import { YouTubeApiHttpClientLive } from "../http/layers/youtube-api-http";
 import { AuthService } from "../services/auth";
 import { ConfigService } from "../services/config";
 import { DatabaseService } from "../services/database";
+import { DownloadUrlMatchingService } from "../services/download-url-matching";
+import { LucidaService } from "../services/lucida";
 import { PathsService } from "../services/paths";
 import { SongExtractionService } from "../services/song-extraction";
 import { SyncService } from "../services/sync";
@@ -39,6 +42,21 @@ const extractionServiceLayer = SongExtractionService.Default.pipe(
   Layer.provide(configProviderLayer),
 );
 
+// Lucida HTTP client (no auth needed)
+const lucidaHttpClientLayer = LucidaHttpClientLive.pipe(
+  Layer.provide(FetchHttpClient.layer),
+);
+
+// Lucida scraping service
+const lucidaServiceLayer = LucidaService.Default.pipe(
+  Layer.provide(lucidaHttpClientLayer),
+);
+
+// Download URL matching service (uses AI)
+const downloadUrlMatchingServiceLayer = DownloadUrlMatchingService.Default.pipe(
+  Layer.provide(configProviderLayer),
+);
+
 // AuthService depends on ConfigService
 const authServiceLayer = AuthService.Default.pipe(
   Layer.provide(configServiceLayer),
@@ -62,6 +80,8 @@ const syncServiceLayer = SyncService.Default.pipe(
   Layer.provide(databaseServiceLayer),
   Layer.provide(youtubeServiceLayer),
   Layer.provide(extractionServiceLayer),
+  Layer.provide(lucidaServiceLayer),
+  Layer.provide(downloadUrlMatchingServiceLayer),
 );
 
 // Infrastructure layers - provided at the bottom to close all leaked dependencies
