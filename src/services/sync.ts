@@ -1,9 +1,14 @@
 import { Prompt } from "@effect/cli";
-import { count, eq, isNull } from "drizzle-orm";
+import { and, count, eq, isNotNull, isNull } from "drizzle-orm";
 import { Console, Effect, Schedule } from "effect";
+import type { DownloadUrlMatchingError } from "../domain/errors/download-url-matching";
+import type { LucidaSearchError } from "../domain/errors/lucida";
 import type { SongExtractionError } from "../domain/errors/song-extraction";
+import type { LucidaTrack } from "../domain/models/lucida";
 import type { PlaylistId } from "../domain/models/youtube/playlist";
 import { DatabaseService } from "./database";
+import { DownloadUrlMatchingService } from "./download-url-matching";
+import { LucidaService } from "./lucida";
 import { SongExtractionService } from "./song-extraction";
 import { YouTubeService } from "./youtube";
 
@@ -13,11 +18,15 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
     DatabaseService.Default,
     YouTubeService.Default,
     SongExtractionService.Default,
+    LucidaService.Default,
+    DownloadUrlMatchingService.Default,
   ],
   effect: Effect.gen(function* () {
     const dbService = yield* DatabaseService;
     const youtube = yield* YouTubeService;
     const songExtraction = yield* SongExtractionService;
+    const lucida = yield* LucidaService;
+    const downloadMatching = yield* DownloadUrlMatchingService;
 
     const syncPlaylistsToDb = Effect.fn("SyncService.syncPlaylistsToDb")(
       function* () {
@@ -308,10 +317,268 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
       },
     );
 
+    /**
+     * Prompt user to select a download URL from search results.
+     * Returns the selected URL or null if skipped.
+     */
+    const promptForDownloadUrl = (
+      song: { songName: string; artistName: string; title: string },
+      searchResults: LucidaTrack[],
+    ) =>
+      Effect.gen(function* () {
+        yield* Console.log("");
+        yield* Console.log(`Song: ${song.artistName} - ${song.songName}`);
+        yield* Console.log(`Original YouTube: ${song.title}`);
+
+        // Build choices for Prompt.select
+        type SelectValue =
+          | { type: "select"; index: number }
+          | { type: "manual" }
+          | { type: "skip" };
+
+        const choices: Array<{
+          title: string;
+          value: SelectValue;
+        }> = [];
+
+        if (searchResults.length > 0) {
+          yield* Console.log("\nSearch results from Tidal:");
+          for (let i = 0; i < searchResults.length; i++) {
+            const r = searchResults[i];
+            if (r) {
+              const choice: { title: string; value: SelectValue } = {
+                title: `${i + 1}. ${r.name} by ${r.artist}${r.album ? ` (Album: ${r.album})` : ""}`,
+                value: { type: "select", index: i },
+              };
+              choices.push(choice);
+            }
+          }
+        } else {
+          yield* Console.log("\nNo search results found from Tidal.");
+        }
+
+        choices.push({
+          title: "Enter URL manually",
+          value: { type: "manual" },
+        });
+        choices.push({
+          title: "Skip this track",
+          value: { type: "skip" },
+        });
+
+        const action = yield* Prompt.select({
+          message: "Choose an action:",
+          choices,
+        });
+
+        if (action.type === "select") {
+          const selectedResult = searchResults[action.index];
+          return selectedResult ? selectedResult.url : null;
+        }
+        if (action.type === "manual") {
+          const url = yield* Prompt.text({
+            message: "Enter Tidal track URL (or leave empty to skip):",
+          });
+          return url.trim() || null;
+        }
+        return null as string | null;
+      });
+
+    /**
+     * Step 5: Find download URLs for songs via lucida.to
+     *
+     * For each song with songName + artistName but no downloadUrl:
+     * 1. Search lucida.to (Tidal) for matching tracks
+     * 2. Use AI to pick the best match
+     * 3. If AI returns null, prompt user immediately
+     * 4. Store the Tidal track URL in the database
+     *
+     * Note: Skipped songs will reappear on next sync (downloadUrl stays null)
+     */
+    const findDownloadUrls = Effect.fn("SyncService.findDownloadUrls")(
+      function* () {
+        const { schema, runQuery } = dbService;
+
+        yield* Effect.logInfo("Finding download URLs for songs");
+
+        // Get count of songs needing download URL lookup
+        const { total } = yield* runQuery(async (db) => {
+          const result = await db
+            .select({ total: count() })
+            .from(schema.songs)
+            .where(
+              and(
+                isNull(schema.songs.downloadUrl),
+                isNotNull(schema.songs.songName),
+                isNotNull(schema.songs.artistName),
+                eq(schema.songs.extractionState, "finalized"),
+              ),
+            );
+          return result[0] ?? { total: 0 };
+        });
+
+        if (total === 0) {
+          yield* Effect.logInfo("No songs need download URL lookup");
+          return;
+        }
+
+        yield* Effect.logInfo(
+          `Found ${total} songs needing download URL lookup`,
+        );
+
+        while (true) {
+          // Get next song that needs download URL
+          const song = yield* runQuery(async (db) => {
+            return await db
+              .select({
+                trackId: schema.songs.trackId,
+                songName: schema.songs.songName,
+                artistName: schema.songs.artistName,
+                title: schema.tracks.title,
+              })
+              .from(schema.songs)
+              .innerJoin(
+                schema.tracks,
+                eq(schema.songs.trackId, schema.tracks.id),
+              )
+              .where(
+                and(
+                  isNull(schema.songs.downloadUrl),
+                  isNotNull(schema.songs.songName),
+                  isNotNull(schema.songs.artistName),
+                  eq(schema.songs.extractionState, "finalized"),
+                ),
+              )
+              .limit(1)
+              .get();
+          });
+
+          // No more songs to process
+          if (!song) {
+            break;
+          }
+
+          // Skip invalid songs (shouldn't happen due to WHERE clause, but be safe)
+          if (!song.songName || !song.artistName) {
+            continue;
+          }
+
+          yield* Effect.logInfo(
+            `Searching for: ${song.artistName} - ${song.songName}`,
+          );
+
+          // Search lucida.to with retry
+          const searchResults = yield* lucida
+            .search(song.songName, song.artistName, 5)
+            .pipe(
+              Effect.tapError((e) =>
+                Effect.logWarning(`Search failed: ${e.message}`),
+              ),
+              Effect.retry(
+                Schedule.exponential("2 seconds").pipe(
+                  Schedule.intersect(Schedule.recurs(3)),
+                  Schedule.intersect(Schedule.identity<LucidaSearchError>()),
+                  Schedule.modifyDelay(([[duration, _], error], __) =>
+                    error.isRateLimit ? "60 seconds" : duration,
+                  ),
+                ),
+              ),
+              Effect.catchAll(() => Effect.succeed([] as LucidaTrack[])),
+            );
+
+          // Get download URL from AI or user prompt
+          const downloadUrl: string | null = yield* searchResults.length === 0
+            ? Effect.gen(function* () {
+                yield* Effect.logWarning(
+                  `No results found for: ${song.artistName} - ${song.songName}`,
+                );
+                return yield* promptForDownloadUrl(
+                  {
+                    songName: song.songName as string,
+                    artistName: song.artistName as string,
+                    title: song.title,
+                  },
+                  [],
+                );
+              })
+            : Effect.gen(function* () {
+                // Use AI to pick best match
+                const match = yield* downloadMatching
+                  .pickBestMatch(
+                    {
+                      songName: song.songName as string,
+                      artistName: song.artistName as string,
+                    },
+                    searchResults,
+                  )
+                  .pipe(
+                    Effect.tapError((e) =>
+                      Effect.logWarning(`AI matching failed: ${e.message}`),
+                    ),
+                    Effect.retry(
+                      Schedule.exponential("2 seconds").pipe(
+                        Schedule.intersect(Schedule.recurs(3)),
+                        Schedule.intersect(
+                          Schedule.identity<DownloadUrlMatchingError>(),
+                        ),
+                        Schedule.modifyDelay(([[duration, _], error], __) =>
+                          error.isRateLimit ? "60 seconds" : duration,
+                        ),
+                      ),
+                    ),
+                    Effect.catchAll(() =>
+                      Effect.succeed({ selectedIndex: null }),
+                    ),
+                  );
+
+                if (match.selectedIndex !== null) {
+                  const selectedTrack = searchResults[match.selectedIndex];
+                  if (selectedTrack) {
+                    yield* Effect.logInfo(
+                      `AI matched: ${selectedTrack.name} by ${selectedTrack.artist}`,
+                    );
+                    return selectedTrack.url;
+                  }
+                }
+
+                // AI not confident - prompt user
+                yield* Effect.logInfo(
+                  "AI not confident, prompting for manual selection",
+                );
+                return yield* promptForDownloadUrl(
+                  {
+                    songName: song.songName as string,
+                    artistName: song.artistName as string,
+                    title: song.title,
+                  },
+                  searchResults,
+                );
+              });
+
+          // Update database only if we have a URL (skipped songs stay null)
+          if (downloadUrl) {
+            yield* runQuery(async (db) => {
+              await db
+                .update(schema.songs)
+                .set({ downloadUrl })
+                .where(eq(schema.songs.trackId, song.trackId))
+                .run();
+            });
+            yield* Effect.logInfo(`Saved download URL for: ${song.songName}`);
+          } else {
+            yield* Effect.logInfo(`Skipped: ${song.songName}`);
+          }
+        }
+
+        yield* Effect.logInfo("Download URL lookup completed");
+      },
+    );
+
     return {
       syncPlaylistsToDb,
       extractSongsWithAi,
       handleManualReview,
+      findDownloadUrls,
     };
   }),
 }) {}
