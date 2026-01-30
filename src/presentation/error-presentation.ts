@@ -136,6 +136,31 @@ const formatError: (error: AppError) => FormattedError =
       exitCode: 1,
     }),
 
+    // Lucida errors
+    LucidaSearchError: (e) => ({
+      title: "Lucida search error",
+      message: e.message,
+      suggestion: e.isRateLimit
+        ? "Rate limited. Wait a few minutes and try again."
+        : "The music search service may be unavailable. Try again later.",
+      exitCode: e.isRateLimit ? 5 : 1,
+    }),
+    LucidaParseError: (e) => ({
+      title: "Lucida parse error",
+      message: e.message,
+      suggestion:
+        "The search results could not be parsed. The service may have changed.",
+      exitCode: 1,
+    }),
+
+    // Download URL matching errors
+    DownloadUrlMatchingError: (e) => ({
+      title: "Download URL matching error",
+      message: e.message,
+      suggestion: "The AI service may be unavailable. Try again later.",
+      exitCode: 1,
+    }),
+
     // General errors
     NotImplementedError: (e) => ({
       title: "Not implemented",
