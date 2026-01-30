@@ -48,6 +48,7 @@ export const songs = sqliteTable("songs", {
   extractionState: text("extraction_state", {
     enum: ["finalized", "manual_review"],
   }).notNull(),
+  downloadUrl: text("download_url"), // Tidal track URL (e.g., https://tidal.com/browse/track/12345)
   createdAt: timestamp("created_at")
     .$default(() => new Date())
     .notNull(),
