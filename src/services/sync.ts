@@ -622,14 +622,19 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
                 )
                 .pipe(
                   Effect.tapError((e) =>
-                    Effect.logWarning(`AI matching failed: ${e.message}`),
+                    Effect.logWarning(
+                      `AI matching failed: ${e.message}${e.isRateLimit ? " (rate limited, waiting 60s)" : ""}`,
+                    ),
                   ),
                   Effect.retry(
                     Schedule.exponential("2 seconds").pipe(
                       Schedule.intersect(Schedule.recurs(MAX_RETRIES)),
-                      // Only retry non-rate-limit errors automatically
-                      Schedule.whileInput(
-                        (e: DownloadUrlMatchingError) => !e.isRateLimit,
+                      Schedule.intersect(
+                        Schedule.identity<DownloadUrlMatchingError>(),
+                      ),
+                      // Wait 60 seconds on rate limit, otherwise use exponential backoff
+                      Schedule.modifyDelay(([[duration, _], error], __) =>
+                        error.isRateLimit ? "60 seconds" : duration,
                       ),
                     ),
                   ),
@@ -638,22 +643,12 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
                     type: "success" as const,
                     match,
                   })),
-                  // Handle errors after retries exhausted
+                  // Handle errors after retries exhausted - prompt user
                   Effect.catchTag("DownloadUrlMatchingError", (e) =>
-                    e.isRateLimit
-                      ? // Rate limit after retries - fail the sync
-                        Effect.fail(
-                          new RateLimitExceededError({
-                            message: `Cerebras rate limited after ${MAX_RETRIES} retries`,
-                            service: "cerebras",
-                            retryCount: MAX_RETRIES,
-                          }),
-                        )
-                      : // Other AI error - prompt user
-                        Effect.succeed({
-                          type: "ai_failed" as const,
-                          error: e,
-                        }),
+                    Effect.succeed({
+                      type: "ai_failed" as const,
+                      error: e,
+                    }),
                   ),
                 );
 
