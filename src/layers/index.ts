@@ -1,6 +1,6 @@
 import { FetchHttpClient } from "@effect/platform";
 import { BunFileSystem } from "@effect/platform-bun";
-import { ConfigProvider, Layer } from "effect";
+import { ConfigProvider, Layer, Logger, LogLevel } from "effect";
 import { LucidaHttpClientLive } from "../http/layers/lucida-http";
 import { OAuthHttpClientLive } from "../http/layers/oauth-http";
 import { YouTubeApiHttpClientLive } from "../http/layers/youtube-api-http";
@@ -16,6 +16,12 @@ import { YouTubeService } from "../services/youtube";
 
 // Infrastructure - provided at app root
 const configProviderLayer = Layer.setConfigProvider(ConfigProvider.fromEnv());
+
+// Logger configuration - DEBUG=1 enables debug level logs
+const loggerLayer =
+  process.env.DEBUG === "1"
+    ? Logger.minimumLogLevel(LogLevel.Debug)
+    : Logger.minimumLogLevel(LogLevel.Info);
 
 // OAuth HTTP client (no service deps - just base URL config)
 const oauthHttpClientLayer = OAuthHttpClientLive.pipe(
@@ -89,6 +95,7 @@ const infrastructureLayer = Layer.mergeAll(
   BunFileSystem.layer,
   FetchHttpClient.layer,
   configProviderLayer,
+  loggerLayer,
 );
 
 // Export combined layer for CLI commands
