@@ -25,7 +25,8 @@ type PromptReason =
   | { type: "search_failed"; message: string }
   | { type: "parse_failed"; message: string }
   | { type: "ai_failed"; message: string }
-  | { type: "ai_unsure" };
+  | { type: "ai_unsure" }
+  | { type: "ai_invalid_index"; index: number };
 
 export class SyncService extends Effect.Service<SyncService>()("SyncService", {
   accessors: true,
@@ -367,6 +368,11 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
           case "ai_unsure":
             yield* Console.log("AI was not confident in any match.");
             break;
+          case "ai_invalid_index":
+            yield* Console.log(
+              `AI returned invalid index ${reason.index} (out of bounds).`,
+            );
+            break;
         }
 
         // Build choices for Prompt.select
@@ -674,6 +680,20 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
                       `AI matched: ${selectedTrack.name} by ${selectedTrack.artist}`,
                     );
                     downloadUrl = selectedTrack.url;
+                  } else {
+                    // AI returned invalid index - prompt user
+                    yield* Effect.logWarning(
+                      `AI returned invalid index ${match.selectedIndex} for ${searchResults.length} results`,
+                    );
+                    downloadUrl = yield* promptForDownloadUrl(
+                      {
+                        songName: song.songName,
+                        artistName: song.artistName,
+                        title: song.title,
+                      },
+                      searchResults,
+                      { type: "ai_invalid_index", index: match.selectedIndex },
+                    );
                   }
                 } else {
                   // AI returned null - not an error, just unsure
