@@ -21,8 +21,14 @@ const extractTracksFromJson = (html: string, query: string) =>
   Effect.gen(function* () {
     const startMarker = "const data = [";
     const startIdx = html.indexOf(startMarker);
+
+    yield* Effect.logDebug(
+      `[JSON] Looking for marker "${startMarker}" - found at index: ${startIdx}`,
+    );
+
     if (startIdx === -1) {
       // No JSON block found - not an error, just no embedded data
+      yield* Effect.logDebug("[JSON] No JSON block found in HTML");
       return [];
     }
 
@@ -66,6 +72,11 @@ const extractTracksFromJson = (html: string, query: string) =>
 
     const jsonStr = html.slice(jsonStart, endIdx);
 
+    yield* Effect.logDebug(
+      `[JSON] Extracted JSON string (first 500 chars): ${jsonStr.slice(0, 500)}`,
+    );
+    yield* Effect.logDebug(`[JSON] JSON string length: ${jsonStr.length}`);
+
     // Wrap JSON.parse in Effect.try to properly fail on parse errors
     const data = yield* Effect.try({
       try: () => JSON.parse(jsonStr),
@@ -78,8 +89,17 @@ const extractTracksFromJson = (html: string, query: string) =>
         }),
     });
 
+    yield* Effect.logDebug(
+      `[JSON] Parsed data structure: ${JSON.stringify(Object.keys(data || {})).slice(0, 200)}`,
+    );
+    yield* Effect.logDebug(
+      `[JSON] data[1] exists: ${!!data?.[1]}, data[1].data exists: ${!!data?.[1]?.data}`,
+    );
+
     // Navigate: data[1].data.results.results.tracks
     const tracks = data?.[1]?.data?.results?.results?.tracks ?? [];
+
+    yield* Effect.logDebug(`[JSON] Found ${tracks.length} tracks in JSON`);
 
     // biome-ignore lint/suspicious/noExplicitAny: JSON parsing returns unknown structure
     return tracks.map((track: any) => ({
@@ -111,11 +131,29 @@ const extractTracksFromHtml = (html: string, query: string) =>
   Effect.gen(function* () {
     const tracks: LucidaTrack[] = [];
 
+    yield* Effect.logDebug(
+      `[HTML] Starting HTML parsing for query: "${query}"`,
+    );
+    yield* Effect.logDebug(
+      `[HTML] HTML contains "search-result-track": ${html.includes("search-result-track")}`,
+    );
+    yield* Effect.logDebug(
+      `[HTML] HTML contains "search-result": ${html.includes("search-result")}`,
+    );
+    yield* Effect.logDebug(
+      `[HTML] HTML contains "No results": ${html.includes("No results")}`,
+    );
+
     // Simple regex-based parsing
     const trackBlockRegex =
       /<div class="search-result-track">([\s\S]*?)<\/div>\s*<\/div>/g;
 
-    for (const match of html.matchAll(trackBlockRegex)) {
+    const allMatches = [...html.matchAll(trackBlockRegex)];
+    yield* Effect.logDebug(
+      `[HTML] Found ${allMatches.length} track blocks with regex`,
+    );
+
+    for (const match of allMatches) {
       const block = match[1];
       if (!block) continue;
 
@@ -140,6 +178,10 @@ const extractTracksFromHtml = (html: string, query: string) =>
       }
     }
 
+    yield* Effect.logDebug(
+      `[HTML] Extracted ${tracks.length} tracks from HTML`,
+    );
+
     // If we found search-result elements but no track blocks, structure may have changed
     if (
       tracks.length === 0 &&
@@ -147,6 +189,9 @@ const extractTracksFromHtml = (html: string, query: string) =>
       !html.includes("search-result-track") &&
       !html.includes("No results")
     ) {
+      yield* Effect.logDebug(
+        "[HTML] Structure mismatch: found 'search-result' but no 'search-result-track'",
+      );
       return yield* Effect.fail(
         new LucidaParseError({
           message:
@@ -171,6 +216,8 @@ const extractTracksFromHtml = (html: string, query: string) =>
  */
 const parseSearchResults = (html: string, query: string) =>
   Effect.gen(function* () {
+    yield* Effect.logDebug(`[PARSE] Starting parse for query: "${query}"`);
+
     // Try JSON first
     const jsonResult = yield* extractTracksFromJson(html, query).pipe(
       Effect.catchTag("LucidaParseError", (jsonError) =>
@@ -178,6 +225,10 @@ const parseSearchResults = (html: string, query: string) =>
           // JSON failed - log warning and try HTML
           yield* Effect.logWarning(
             `JSON parsing failed for "${query}": ${jsonError.message}`,
+          );
+
+          yield* Effect.logDebug(
+            "[PARSE] JSON failed, attempting HTML fallback",
           );
 
           // Try HTML fallback
@@ -198,15 +249,27 @@ const parseSearchResults = (html: string, query: string) =>
       ),
     );
 
+    yield* Effect.logDebug(
+      `[PARSE] JSON result: ${jsonResult.length} tracks (${jsonResult.length > 0 ? "success" : "empty"})`,
+    );
+
     // If JSON succeeded with tracks, use them
     if (jsonResult.length > 0) {
+      yield* Effect.logDebug("[PARSE] Using JSON results");
       return jsonResult;
     }
 
     // JSON returned empty - try HTML (might have results JSON missed)
+    yield* Effect.logDebug(
+      "[PARSE] JSON empty, trying HTML as additional check",
+    );
     const htmlResult = yield* extractTracksFromHtml(html, query).pipe(
       // If HTML fails but JSON worked (returned empty), that's OK - return empty
       Effect.catchTag("LucidaParseError", () => Effect.succeed([])),
+    );
+
+    yield* Effect.logDebug(
+      `[PARSE] HTML result: ${htmlResult.length} tracks (${htmlResult.length > 0 ? "success" : "empty"})`,
     );
 
     return htmlResult;
@@ -241,9 +304,10 @@ export class LucidaService extends Effect.Service<LucidaService>()(
         const query = `${artistName} ${songName}`;
         const encodedQuery = encodeURIComponent(query);
 
-        const request = HttpClientRequest.get(
-          `/search?service=tidal&country=US&query=${encodedQuery}`,
-        );
+        const url = `/search?service=tidal&country=US&query=${encodedQuery}`;
+        yield* Effect.logDebug(`[LUCIDA] Request URL: ${url}`);
+
+        const request = HttpClientRequest.get(url);
 
         const response = yield* http.execute(request).pipe(
           Effect.mapError((e) =>
@@ -257,6 +321,8 @@ export class LucidaService extends Effect.Service<LucidaService>()(
           ),
         );
 
+        yield* Effect.logDebug(`[LUCIDA] Response status: ${response.status}`);
+
         // Access text as instance property on the response
         const html = yield* response.text.pipe(
           Effect.mapError((e) =>
@@ -268,8 +334,17 @@ export class LucidaService extends Effect.Service<LucidaService>()(
           ),
         );
 
+        yield* Effect.logDebug(`[LUCIDA] Response body length: ${html.length}`);
+        yield* Effect.logDebug(
+          `[LUCIDA] Response body (first 1000 chars): ${html.slice(0, 1000)}`,
+        );
+
         // Parse with proper error handling
         const tracks = yield* parseSearchResults(html, query);
+
+        yield* Effect.logDebug(
+          `[LUCIDA] Final result: ${tracks.length} tracks found`,
+        );
 
         return tracks.slice(0, limit);
       });
