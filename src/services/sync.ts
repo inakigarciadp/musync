@@ -2,8 +2,12 @@ import { Prompt } from "@effect/cli";
 import { and, count, eq, isNotNull, isNull } from "drizzle-orm";
 import { Console, Effect, Schedule } from "effect";
 import type { DownloadUrlMatchingError } from "../domain/errors/download-url-matching";
-import type { LucidaSearchError } from "../domain/errors/lucida";
+import type {
+  LucidaParseError,
+  LucidaSearchError,
+} from "../domain/errors/lucida";
 import type { SongExtractionError } from "../domain/errors/song-extraction";
+import { RateLimitExceededError } from "../domain/errors/sync";
 import type { LucidaTrack } from "../domain/models/lucida";
 import type { PlaylistId } from "../domain/models/youtube/playlist";
 import { DatabaseService } from "./database";
@@ -11,6 +15,17 @@ import { DownloadUrlMatchingService } from "./download-url-matching";
 import { LucidaService } from "./lucida";
 import { SongExtractionService } from "./song-extraction";
 import { YouTubeService } from "./youtube";
+
+/**
+ * Reason why user is being prompted for manual URL selection.
+ * This provides context so user understands what happened.
+ */
+type PromptReason =
+  | { type: "no_results" }
+  | { type: "search_failed"; message: string }
+  | { type: "parse_failed"; message: string }
+  | { type: "ai_failed"; message: string }
+  | { type: "ai_unsure" };
 
 export class SyncService extends Effect.Service<SyncService>()("SyncService", {
   accessors: true,
@@ -319,16 +334,40 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
 
     /**
      * Prompt user to select a download URL from search results.
+     * Shows the reason why manual intervention is needed.
      * Returns the selected URL or null if skipped.
      */
     const promptForDownloadUrl = (
       song: { songName: string; artistName: string; title: string },
       searchResults: LucidaTrack[],
+      reason: PromptReason,
     ) =>
       Effect.gen(function* () {
         yield* Console.log("");
         yield* Console.log(`Song: ${song.artistName} - ${song.songName}`);
         yield* Console.log(`Original YouTube: ${song.title}`);
+
+        // Show reason for manual intervention
+        yield* Console.log("");
+        switch (reason.type) {
+          case "no_results":
+            yield* Console.log("No results found from Tidal.");
+            break;
+          case "search_failed":
+            yield* Console.log(`Search failed: ${reason.message}`);
+            break;
+          case "parse_failed":
+            yield* Console.log(
+              `Could not parse search results: ${reason.message}`,
+            );
+            break;
+          case "ai_failed":
+            yield* Console.log(`AI matching failed: ${reason.message}`);
+            break;
+          case "ai_unsure":
+            yield* Console.log("AI was not confident in any match.");
+            break;
+        }
 
         // Build choices for Prompt.select
         type SelectValue =
@@ -353,8 +392,6 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
               choices.push(choice);
             }
           }
-        } else {
-          yield* Console.log("\nNo search results found from Tidal.");
         }
 
         choices.push({
@@ -390,10 +427,14 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
      * For each song with songName + artistName but no downloadUrl:
      * 1. Search lucida.to (Tidal) for matching tracks
      * 2. Use AI to pick the best match
-     * 3. If AI returns null, prompt user immediately
+     * 3. If AI returns null or any step fails, prompt user with context
      * 4. Store the Tidal track URL in the database
      *
-     * Note: Skipped songs will reappear on next sync (downloadUrl stays null)
+     * Error handling:
+     * - HTTP/Parse errors: Retry, then prompt user with error message
+     * - Rate limits: Retry with longer delay, fail sync if exceeded
+     * - AI errors: Retry, then prompt user with error message
+     * - AI returns null: Prompt user (AI was unsure, not an error)
      */
     const findDownloadUrls = Effect.fn("SyncService.findDownloadUrls")(
       function* () {
@@ -403,6 +444,9 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
 
         // Track skipped songs in memory to avoid re-fetching them in this run
         const skippedTrackIds = new Set<string>();
+
+        // Constants for retry logic
+        const MAX_RETRIES = 3;
 
         // Get count of songs needing download URL lookup
         const { total } = yield* runQuery(async (db) => {
@@ -472,93 +516,182 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
             `Searching for: ${song.artistName} - ${song.songName}`,
           );
 
-          // Search lucida.to with retry
-          const searchResults = yield* lucida
+          // Search lucida.to with retry - proper error handling
+          // Create a retry schedule that:
+          // - Uses exponential backoff starting at 2 seconds
+          // - Retries up to MAX_RETRIES times
+          // - Only retries if NOT a rate limit error (rate limits should fail fast)
+          const searchRetrySchedule = Schedule.exponential("2 seconds").pipe(
+            Schedule.intersect(Schedule.recurs(MAX_RETRIES)),
+            Schedule.whileInput((e: LucidaSearchError | LucidaParseError) =>
+              e._tag === "LucidaSearchError" ? !e.isRateLimit : true,
+            ),
+          );
+
+          const searchOutcome = yield* lucida
             .search(song.songName, song.artistName, 5)
             .pipe(
               Effect.tapError((e) =>
                 Effect.logWarning(`Search failed: ${e.message}`),
               ),
-              Effect.retry(
-                Schedule.exponential("2 seconds").pipe(
-                  Schedule.intersect(Schedule.recurs(3)),
-                  Schedule.intersect(Schedule.identity<LucidaSearchError>()),
-                  Schedule.modifyDelay(([[duration, _], error], __) =>
-                    error.isRateLimit ? "60 seconds" : duration,
-                  ),
-                ),
+              Effect.retry(searchRetrySchedule),
+              // Map success to outcome type
+              Effect.map((tracks) => ({ type: "success" as const, tracks })),
+              // Handle errors after retries exhausted
+              Effect.catchTag("LucidaSearchError", (e) =>
+                e.isRateLimit
+                  ? // Rate limit after retries - fail the sync
+                    Effect.fail(
+                      new RateLimitExceededError({
+                        message: `Lucida rate limited after ${MAX_RETRIES} retries`,
+                        service: "lucida",
+                        retryCount: MAX_RETRIES,
+                      }),
+                    )
+                  : // Other search error - prompt user
+                    Effect.succeed({
+                      type: "search_failed" as const,
+                      error: e,
+                    }),
               ),
-              Effect.catchAll(() => Effect.succeed([] as LucidaTrack[])),
+              Effect.catchTag("LucidaParseError", (e) =>
+                // Parse error - prompt user
+                Effect.succeed({ type: "parse_failed" as const, error: e }),
+              ),
             );
 
-          // Get download URL from AI or user prompt
-          const downloadUrl: string | null = yield* searchResults.length === 0
-            ? Effect.gen(function* () {
-                yield* Effect.logWarning(
-                  `No results found for: ${song.artistName} - ${song.songName}`,
-                );
-                return yield* promptForDownloadUrl(
+          // Handle search outcome
+          let downloadUrl: string | null = null;
+
+          if (searchOutcome.type === "search_failed") {
+            // Search failed - prompt user with error context
+            downloadUrl = yield* promptForDownloadUrl(
+              {
+                songName: song.songName,
+                artistName: song.artistName,
+                title: song.title,
+              },
+              [],
+              { type: "search_failed", message: searchOutcome.error.message },
+            );
+          } else if (searchOutcome.type === "parse_failed") {
+            // Parse failed - prompt user with error context
+            downloadUrl = yield* promptForDownloadUrl(
+              {
+                songName: song.songName,
+                artistName: song.artistName,
+                title: song.title,
+              },
+              [],
+              { type: "parse_failed", message: searchOutcome.error.message },
+            );
+          } else {
+            // Search succeeded
+            const searchResults = searchOutcome.tracks;
+
+            if (searchResults.length === 0) {
+              // No results found - prompt user
+              yield* Effect.logWarning(
+                `No results found for: ${song.artistName} - ${song.songName}`,
+              );
+              downloadUrl = yield* promptForDownloadUrl(
+                {
+                  songName: song.songName,
+                  artistName: song.artistName,
+                  title: song.title,
+                },
+                [],
+                { type: "no_results" },
+              );
+            } else {
+              // Have results - use AI to pick best match
+              const matchOutcome = yield* downloadMatching
+                .pickBestMatch(
                   {
-                    songName: song.songName as string,
-                    artistName: song.artistName as string,
-                    title: song.title,
+                    songName: song.songName,
+                    artistName: song.artistName,
                   },
-                  [],
-                );
-              })
-            : Effect.gen(function* () {
-                // Use AI to pick best match
-                const match = yield* downloadMatching
-                  .pickBestMatch(
-                    {
-                      songName: song.songName as string,
-                      artistName: song.artistName as string,
-                    },
-                    searchResults,
-                  )
-                  .pipe(
-                    Effect.tapError((e) =>
-                      Effect.logWarning(`AI matching failed: ${e.message}`),
-                    ),
-                    Effect.retry(
-                      Schedule.exponential("2 seconds").pipe(
-                        Schedule.intersect(Schedule.recurs(3)),
-                        Schedule.intersect(
-                          Schedule.identity<DownloadUrlMatchingError>(),
-                        ),
-                        Schedule.modifyDelay(([[duration, _], error], __) =>
-                          error.isRateLimit ? "60 seconds" : duration,
-                        ),
+                  searchResults,
+                )
+                .pipe(
+                  Effect.tapError((e) =>
+                    Effect.logWarning(`AI matching failed: ${e.message}`),
+                  ),
+                  Effect.retry(
+                    Schedule.exponential("2 seconds").pipe(
+                      Schedule.intersect(Schedule.recurs(MAX_RETRIES)),
+                      // Only retry non-rate-limit errors automatically
+                      Schedule.whileInput(
+                        (e: DownloadUrlMatchingError) => !e.isRateLimit,
                       ),
                     ),
-                    Effect.catchAll(() =>
-                      Effect.succeed({ selectedIndex: null }),
-                    ),
-                  );
+                  ),
+                  // Map success to outcome type
+                  Effect.map((match) => ({
+                    type: "success" as const,
+                    match,
+                  })),
+                  // Handle errors after retries exhausted
+                  Effect.catchTag("DownloadUrlMatchingError", (e) =>
+                    e.isRateLimit
+                      ? // Rate limit after retries - fail the sync
+                        Effect.fail(
+                          new RateLimitExceededError({
+                            message: `Cerebras rate limited after ${MAX_RETRIES} retries`,
+                            service: "cerebras",
+                            retryCount: MAX_RETRIES,
+                          }),
+                        )
+                      : // Other AI error - prompt user
+                        Effect.succeed({
+                          type: "ai_failed" as const,
+                          error: e,
+                        }),
+                  ),
+                );
+
+              if (matchOutcome.type === "ai_failed") {
+                // AI failed - prompt user with error context
+                downloadUrl = yield* promptForDownloadUrl(
+                  {
+                    songName: song.songName,
+                    artistName: song.artistName,
+                    title: song.title,
+                  },
+                  searchResults,
+                  { type: "ai_failed", message: matchOutcome.error.message },
+                );
+              } else {
+                // AI succeeded
+                const match = matchOutcome.match;
 
                 if (match.selectedIndex !== null) {
+                  // AI found a confident match
                   const selectedTrack = searchResults[match.selectedIndex];
                   if (selectedTrack) {
                     yield* Effect.logInfo(
                       `AI matched: ${selectedTrack.name} by ${selectedTrack.artist}`,
                     );
-                    return selectedTrack.url;
+                    downloadUrl = selectedTrack.url;
                   }
+                } else {
+                  // AI returned null - not an error, just unsure
+                  yield* Effect.logInfo(
+                    "AI not confident, prompting for manual selection",
+                  );
+                  downloadUrl = yield* promptForDownloadUrl(
+                    {
+                      songName: song.songName,
+                      artistName: song.artistName,
+                      title: song.title,
+                    },
+                    searchResults,
+                    { type: "ai_unsure" },
+                  );
                 }
-
-                // AI not confident - prompt user
-                yield* Effect.logInfo(
-                  "AI not confident, prompting for manual selection",
-                );
-                return yield* promptForDownloadUrl(
-                  {
-                    songName: song.songName as string,
-                    artistName: song.artistName as string,
-                    title: song.title,
-                  },
-                  searchResults,
-                );
-              });
+              }
+            }
+          }
 
           // Update database only if we have a URL (skipped songs stay null)
           if (downloadUrl) {
@@ -575,8 +708,6 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
             skippedTrackIds.add(song.trackId);
             yield* Effect.logInfo(`Skipped: ${song.songName}`);
           }
-          // just run one iteration for testing
-          // break;
         }
 
         yield* Effect.logInfo("Download URL lookup completed");

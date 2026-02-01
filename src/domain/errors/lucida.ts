@@ -15,5 +15,7 @@ export class LucidaParseError extends Schema.TaggedError<LucidaParseError>()(
   {
     message: Schema.String,
     cause: Schema.optional(Schema.Unknown),
+    query: Schema.String,
+    parseMethod: Schema.String, // "json" | "html" | "both"
   },
 ) {}

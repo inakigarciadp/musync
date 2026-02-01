@@ -161,6 +161,14 @@ const formatError: (error: AppError) => FormattedError =
       exitCode: 1,
     }),
 
+    // Sync errors
+    RateLimitExceededError: (e) => ({
+      title: "Rate Limit Exceeded",
+      message: e.message,
+      suggestion: `The ${e.service} service rate limited us ${e.retryCount} times. Try again later.`,
+      exitCode: 5,
+    }),
+
     // General errors
     NotImplementedError: (e) => ({
       title: "Not implemented",
