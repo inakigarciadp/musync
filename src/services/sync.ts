@@ -337,12 +337,12 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
      * Shows the reason why manual intervention is needed.
      * Returns the selected URL or null if skipped.
      */
-    const promptForDownloadUrl = (
-      song: { songName: string; artistName: string; title: string },
-      searchResults: LucidaTrack[],
-      reason: PromptReason,
-    ) =>
-      Effect.gen(function* () {
+    const promptForDownloadUrl = Effect.fn("SyncService.promptForDownloadUrl")(
+      function* (
+        song: { songName: string; artistName: string; title: string },
+        searchResults: LucidaTrack[],
+        reason: PromptReason,
+      ) {
         yield* Console.log("");
         yield* Console.log(`Song: ${song.artistName} - ${song.songName}`);
         yield* Console.log(`Original YouTube: ${song.title}`);
@@ -419,7 +419,8 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
           return url.trim() || null;
         }
         return null as string | null;
-      });
+      },
+    );
 
     /**
      * Step 5: Find download URLs for songs via lucida.to
