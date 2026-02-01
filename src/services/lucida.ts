@@ -144,9 +144,22 @@ const extractTracksFromHtml = (html: string, query: string) =>
       `[HTML] HTML contains "No results": ${html.includes("No results")}`,
     );
 
-    // Simple regex-based parsing
+    // Debug: show actual HTML around search-result-track to understand structure
+    const trackClassIdx = html.indexOf("search-result-track");
+    if (trackClassIdx !== -1) {
+      // Get 500 chars before and 1000 chars after to see context
+      const start = Math.max(0, trackClassIdx - 100);
+      const end = Math.min(html.length, trackClassIdx + 1000);
+      yield* Effect.logDebug(
+        `[HTML] HTML around "search-result-track" (idx ${trackClassIdx}):\n${html.slice(start, end)}`,
+      );
+    }
+
+    // Match track blocks - class contains "search-result-track" (may have other classes)
+    // Structure: <div class="search-result-track ...">...<div class="metadata">...</div></div>
+    // Use a more flexible regex that captures until the next track block or end of results
     const trackBlockRegex =
-      /<div class="search-result-track">([\s\S]*?)<\/div>\s*<\/div>/g;
+      /<div class="[^"]*search-result-track[^"]*">([\s\S]*?)<\/div>\s*<\/div>/g;
 
     const allMatches = [...html.matchAll(trackBlockRegex)];
     yield* Effect.logDebug(
@@ -157,23 +170,40 @@ const extractTracksFromHtml = (html: string, query: string) =>
       const block = match[1];
       if (!block) continue;
 
-      // Extract track name and URL from h1 > a
-      const titleMatch =
-        /<h1[^>]*><a href="([^"]*)"[^>]*>([^<]*)<\/a><\/h1>/i.exec(block);
+      yield* Effect.logDebug(
+        `[HTML] Processing block (first 300 chars): ${block.slice(0, 300)}`,
+      );
+
+      // New structure: <a href="/?url=..."><h1>Track Name</h1></a>
+      // The URL is in the <a> tag wrapping the <h1>, and contains a url= query param
+      const titleLinkMatch =
+        /<a href="([^"]*)"[^>]*>\s*<h1[^>]*>([^<]*)<\/h1>\s*<\/a>/i.exec(block);
+
+      // Artist is in <h2>
       const artistMatch = /<h2[^>]*>([^<]*)<\/h2>/i.exec(block);
-      const albumMatch = /<h3[^>]*>([^<]*)<\/h3>/i.exec(block);
 
-      const trackUrl = titleMatch?.[1];
-      const trackName = titleMatch?.[2];
+      // Album is in <h3> - may contain an <a> tag
+      const albumMatch = /<h3[^>]*>(?:<a[^>]*>)?([^<]*)(?:<\/a>)?/i.exec(block);
 
-      if (trackUrl && trackName) {
+      const linkHref = titleLinkMatch?.[1];
+      const trackName = titleLinkMatch?.[2];
+
+      yield* Effect.logDebug(
+        `[HTML] Extracted - linkHref: ${linkHref}, trackName: ${trackName}, artist: ${artistMatch?.[1]}`,
+      );
+
+      if (linkHref && trackName) {
+        // The href is like "/?url=http%3A%2F%2Fwww.tidal.com%2Ftrack%2F45474649"
+        // We need the full lucida.to URL which will handle the redirect
+        const trackUrl = linkHref.startsWith("http")
+          ? linkHref
+          : `https://lucida.to${linkHref}`;
+
         tracks.push({
           name: trackName.trim(),
           artist: artistMatch?.[1]?.trim() ?? "",
           album: albumMatch?.[1]?.trim() ?? null,
-          url: trackUrl.startsWith("http")
-            ? trackUrl
-            : `https://lucida.to${trackUrl}`,
+          url: trackUrl,
         });
       }
     }
@@ -322,6 +352,35 @@ export class LucidaService extends Effect.Service<LucidaService>()(
         );
 
         yield* Effect.logDebug(`[LUCIDA] Response status: ${response.status}`);
+
+        // Check for transient HTTP errors that should be retried
+        // 404 can be transient on Lucida (server-side issues)
+        // 5xx errors are server errors that may resolve on retry
+        if (response.status === 404) {
+          yield* Effect.logDebug(
+            "[LUCIDA] Got 404 - treating as transient error, will retry",
+          );
+          return yield* Effect.fail(
+            LucidaSearchError.make({
+              message: `Transient 404 error - server may be overloaded`,
+              isRateLimit: false,
+              query,
+            }),
+          );
+        }
+
+        if (response.status >= 500) {
+          yield* Effect.logDebug(
+            `[LUCIDA] Got ${response.status} server error - will retry`,
+          );
+          return yield* Effect.fail(
+            LucidaSearchError.make({
+              message: `Server error ${response.status}`,
+              isRateLimit: false,
+              query,
+            }),
+          );
+        }
 
         // Access text as instance property on the response
         const html = yield* response.text.pipe(
