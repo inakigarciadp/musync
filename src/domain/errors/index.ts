@@ -27,6 +27,8 @@ import type { UserInterruptError } from "./interactive";
 import type { LucidaParseError, LucidaSearchError } from "./lucida";
 // Song extraction errors
 import type { SongExtractionError } from "./song-extraction";
+// Sync errors
+import type { RateLimitExceededError } from "./sync";
 // YouTube errors
 import type {
   AuthenticationRequiredError,
@@ -76,6 +78,8 @@ export type AppError =
   | LucidaParseError
   // Song extraction errors
   | SongExtractionError
+  // Sync errors
+  | RateLimitExceededError
   // HTTP errors (from @effect/platform)
   | HttpClientError
   // CLI validation errors (from @effect/cli)
