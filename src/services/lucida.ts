@@ -352,8 +352,18 @@ export class LucidaService extends Effect.Service<LucidaService>()(
         yield* Effect.logDebug(`[LUCIDA] Response status: ${response.status}`);
 
         // Check for transient HTTP errors that should be retried
+        // 429 is rate limit - should wait before retrying
         // 404 can be transient on Lucida (server-side issues)
         // 5xx errors are server errors that may resolve on retry
+        if (response.status === 429) {
+          yield* Effect.logDebug("[LUCIDA] Got 429 - rate limited by Lucida");
+          return yield* LucidaSearchError.make({
+            message: `Rate limited by Lucida`,
+            isRateLimit: true,
+            query,
+          });
+        }
+
         if (response.status === 404) {
           yield* Effect.logDebug(
             "[LUCIDA] Got 404 - treating as transient error, will retry",
