@@ -1,5 +1,5 @@
 import { HttpClient, HttpClientRequest } from "@effect/platform";
-import { Effect } from "effect";
+import { Effect, Ref } from "effect";
 import { LucidaParseError, LucidaSearchError } from "../domain/errors/lucida";
 import type { LucidaTrack } from "../domain/models/lucida";
 
@@ -309,8 +309,8 @@ export class LucidaService extends Effect.Service<LucidaService>()(
     effect: Effect.gen(function* () {
       const http = yield* HttpClient.HttpClient;
 
-      // Mutable state for rate limiting (last request timestamp)
-      let lastRequestTime = 0;
+      // Thread-safe state for rate limiting (last request timestamp)
+      const lastRequestTime = yield* Ref.make(0);
       const MIN_REQUEST_INTERVAL = 2000; // 2 seconds
 
       const search = Effect.fn("LucidaService.search")(function* (
@@ -318,15 +318,16 @@ export class LucidaService extends Effect.Service<LucidaService>()(
         artistName: string,
         limit: number = 5,
       ) {
-        // Rate limiting: wait if needed
+        // Rate limiting: wait if needed (using Ref for concurrency safety)
         const now = Date.now();
-        const timeSinceLastRequest = now - lastRequestTime;
+        const lastTime = yield* Ref.get(lastRequestTime);
+        const timeSinceLastRequest = now - lastTime;
         if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
           yield* Effect.sleep(
             `${MIN_REQUEST_INTERVAL - timeSinceLastRequest} millis`,
           );
         }
-        lastRequestTime = Date.now();
+        yield* Ref.set(lastRequestTime, Date.now());
 
         const query = `${artistName} ${songName}`;
         const encodedQuery = encodeURIComponent(query);
