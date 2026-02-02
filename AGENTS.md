@@ -12,6 +12,24 @@ Use kebab-case for TypeScript files.
 
 If you run into an error loop, look at existing patterns and implementations to see how are we doing things. If that does not work, use the btca subagent to ask for help.
 
+## btca
+
+When you need up-to-date information about technologies used in this project, use btca to query source repositories directly.
+
+**Available resources**: effect, lucidaFlow
+
+### Usage
+
+```bash
+btca ask -r <resource> -q "<question>"
+```
+
+Use multiple `-r` flags to query multiple resources at once:
+
+```bash
+btca ask -r svelte -r effect -q "How do I integrate Effect with Svelte?"
+```
+
 ## Error Handling System
 
 The application uses a centralized, type-safe error handling system with Effect:
