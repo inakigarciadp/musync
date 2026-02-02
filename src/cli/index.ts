@@ -3,6 +3,7 @@ import { loginCommand } from "./commands/auth/login";
 import { logoutCommand } from "./commands/auth/logout";
 import { authRefreshCommand } from "./commands/auth/refresh";
 import { authStatusCommand } from "./commands/auth/status";
+import { cloudflareSetCommand } from "./commands/cloudflare/set";
 import { configResetCommand } from "./commands/config/reset";
 import { configSetCommand } from "./commands/config/set";
 import { configShowCommand } from "./commands/config/show";
@@ -57,6 +58,10 @@ const maintenanceCommand = Command.make("maintenance", {}).pipe(
   ]),
 );
 
+const cloudflareCommand = Command.make("cloudflare", {}).pipe(
+  Command.withSubcommands([cloudflareSetCommand]),
+);
+
 const musyncCommand = Command.make("musync", {}).pipe(
   Command.withDescription("Music sync utility for YouTube playlists"),
   Command.withSubcommands([
@@ -69,6 +74,7 @@ const musyncCommand = Command.make("musync", {}).pipe(
     configCommand,
     playlistCommand,
     maintenanceCommand,
+    cloudflareCommand,
   ]),
 );
 
