@@ -24,7 +24,11 @@ import type { DownloadUrlMatchingError } from "./download-url-matching";
 // Interactive prompt errors
 import type { UserInterruptError } from "./interactive";
 // Lucida errors
-import type { LucidaParseError, LucidaSearchError } from "./lucida";
+import type {
+  CloudflareChallengeError,
+  LucidaParseError,
+  LucidaSearchError,
+} from "./lucida";
 // Song extraction errors
 import type { SongExtractionError } from "./song-extraction";
 // Sync errors
@@ -76,6 +80,7 @@ export type AppError =
   // Lucida errors
   | LucidaSearchError
   | LucidaParseError
+  | CloudflareChallengeError
   // Song extraction errors
   | SongExtractionError
   // Sync errors

@@ -152,6 +152,16 @@ const formatError: (error: AppError) => FormattedError =
         "The search results could not be parsed. The service may have changed.",
       exitCode: 1,
     }),
+    CloudflareChallengeError: (e) => ({
+      title: "Cloudflare verification required",
+      message: e.message,
+      suggestion: `To bypass the Cloudflare challenge:
+  1. Open ${e.url} in your browser
+  2. Complete the verification
+  3. Run: musync cloudflare set
+  4. Re-run your command`,
+      exitCode: 8,
+    }),
 
     // Download URL matching errors
     DownloadUrlMatchingError: (e) => ({

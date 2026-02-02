@@ -19,3 +19,11 @@ export class LucidaParseError extends Schema.TaggedError<LucidaParseError>()(
     parseMethod: Schema.String, // "json" | "html" | "both"
   },
 ) {}
+
+export class CloudflareChallengeError extends Schema.TaggedError<CloudflareChallengeError>()(
+  "CloudflareChallengeError",
+  {
+    message: Schema.String,
+    url: Schema.String, // The URL the user needs to visit to solve the challenge
+  },
+) {}
