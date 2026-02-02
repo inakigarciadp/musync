@@ -534,7 +534,9 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
               ),
               Effect.retry({
                 schedule: searchRetrySchedule,
-                while: (e) => e._tag !== "CloudflareChallengeError",
+                while: (e) =>
+                  e._tag !== "CloudflareChallengeError" &&
+                  !(e._tag === "LucidaSearchError" && e.isRateLimit),
               }),
               // Map success to outcome type
               Effect.map((tracks) => ({ type: "success" as const, tracks })),
