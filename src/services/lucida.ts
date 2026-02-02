@@ -1,6 +1,10 @@
 import { HttpClient, HttpClientRequest } from "@effect/platform";
 import { Effect, Ref } from "effect";
-import { LucidaParseError, LucidaSearchError } from "../domain/errors/lucida";
+import {
+  CloudflareChallengeError,
+  LucidaParseError,
+  LucidaSearchError,
+} from "../domain/errors/lucida";
 import type { LucidaTrack } from "../domain/models/lucida";
 
 /**
@@ -401,6 +405,20 @@ export class LucidaService extends Effect.Service<LucidaService>()(
         yield* Effect.logDebug(
           `[LUCIDA] Response body (first 1000 chars): ${html.slice(0, 1000)}`,
         );
+
+        // Detect Cloudflare challenge: 403 status + "Just a moment..." in title
+        if (
+          response.status === 403 &&
+          html.includes("<title>Just a moment...</title>")
+        ) {
+          yield* Effect.logDebug(
+            "[LUCIDA] Detected Cloudflare challenge - user action required",
+          );
+          return yield* new CloudflareChallengeError({
+            message: "Cloudflare verification required",
+            url: "https://lucida.to",
+          });
+        }
 
         // Parse with proper error handling
         const tracks = yield* parseSearchResults(html, query);

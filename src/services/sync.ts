@@ -2,10 +2,6 @@ import { Prompt } from "@effect/cli";
 import { and, count, eq, isNotNull, isNull } from "drizzle-orm";
 import { Console, Effect, Schedule } from "effect";
 import type { DownloadUrlMatchingError } from "../domain/errors/download-url-matching";
-import type {
-  LucidaParseError,
-  LucidaSearchError,
-} from "../domain/errors/lucida";
 import type { SongExtractionError } from "../domain/errors/song-extraction";
 import { RateLimitExceededError } from "../domain/errors/sync";
 import type { LucidaTrack } from "../domain/models/lucida";
@@ -524,15 +520,10 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
           );
 
           // Search lucida.to with retry - proper error handling
-          // Create a retry schedule that:
-          // - Uses exponential backoff starting at 2 seconds
-          // - Retries up to MAX_RETRIES times
-          // - Only retries if NOT a rate limit error (rate limits should fail fast)
+          // Retry schedule: exponential backoff (2s base) up to MAX_RETRIES
+          // Does NOT retry CloudflareChallengeError - user must intervene
           const searchRetrySchedule = Schedule.exponential("2 seconds").pipe(
             Schedule.intersect(Schedule.recurs(MAX_RETRIES)),
-            Schedule.whileInput((e: LucidaSearchError | LucidaParseError) =>
-              e._tag === "LucidaSearchError" ? !e.isRateLimit : true,
-            ),
           );
 
           const searchOutcome = yield* lucida
@@ -541,7 +532,10 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
               Effect.tapError((e) =>
                 Effect.logWarning(`Search failed: ${e.message}`),
               ),
-              Effect.retry(searchRetrySchedule),
+              Effect.retry({
+                schedule: searchRetrySchedule,
+                while: (e) => e._tag !== "CloudflareChallengeError",
+              }),
               // Map success to outcome type
               Effect.map((tracks) => ({ type: "success" as const, tracks })),
               // Handle errors after retries exhausted
@@ -565,6 +559,7 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
                 // Parse error - prompt user
                 Effect.succeed({ type: "parse_failed" as const, error: e }),
               ),
+              // CloudflareChallengeError - let it propagate up to user
             );
 
           // Handle search outcome
