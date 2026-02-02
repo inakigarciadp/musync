@@ -5,6 +5,7 @@ import { LucidaHttpClientLive } from "../http/layers/lucida-http";
 import { OAuthHttpClientLive } from "../http/layers/oauth-http";
 import { YouTubeApiHttpClientLive } from "../http/layers/youtube-api-http";
 import { AuthService } from "../services/auth";
+import { CloudflareCredentialsService } from "../services/cloudflare-credentials";
 import { ConfigService } from "../services/config";
 import { DatabaseService } from "../services/database";
 import { DownloadUrlMatchingService } from "../services/download-url-matching";
@@ -48,8 +49,16 @@ const extractionServiceLayer = SongExtractionService.Default.pipe(
   Layer.provide(configProviderLayer),
 );
 
-// Lucida HTTP client (no auth needed)
+// Cloudflare credentials service (for bypassing Cloudflare challenges)
+const cloudflareCredentialsServiceLayer =
+  CloudflareCredentialsService.Default.pipe(
+    Layer.provide(pathsServiceLayer),
+    Layer.provide(BunFileSystem.layer),
+  );
+
+// Lucida HTTP client (depends on CloudflareCredentialsService for cf_clearance)
 const lucidaHttpClientLayer = LucidaHttpClientLive.pipe(
+  Layer.provide(cloudflareCredentialsServiceLayer),
   Layer.provide(FetchHttpClient.layer),
 );
 
@@ -104,4 +113,5 @@ export const AppLayer = Layer.mergeAll(
   youtubeServiceLayer,
   databaseServiceLayer,
   syncServiceLayer,
+  cloudflareCredentialsServiceLayer,
 ).pipe(Layer.provide(infrastructureLayer));
