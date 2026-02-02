@@ -108,3 +108,4 @@ XDG_DATA_HOME=/custom/path musync sync
 
 - Add config json file.
 - Config the cerebras model through the json file.
+- When we prompt a user for input, (cloudflare set, or step 5 of the sync command) the rendering is broken.
