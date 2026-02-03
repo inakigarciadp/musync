@@ -16,18 +16,12 @@ If you run into an error loop, look at existing patterns and implementations to 
 
 When you need up-to-date information about technologies used in this project, use btca to query source repositories directly.
 
-**Available resources**: effect, lucidaFlow
+**Available resources**: effect, lucidaDownloader
 
 ### Usage
 
 ```bash
-btca ask -r <resource> -q "<question>"
-```
-
-Use multiple `-r` flags to query multiple resources at once:
-
-```bash
-btca ask -r svelte -r effect -q "How do I integrate Effect with Svelte?"
+btca ask -t <resource> -q "<question>"
 ```
 
 ## Error Handling System
