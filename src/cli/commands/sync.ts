@@ -35,6 +35,9 @@ export const syncCommand = Command.make(
     // Step 5: Find download URLs via lucida.to (prompts user inline if AI unsure)
     yield* syncService.findDownloadUrls();
 
+    // Step 6: Download songs
+    yield* syncService.downloadSongs();
+
     yield* Effect.logInfo("Sync process completed");
   }),
 ).pipe(Command.withDescription("Fetch metadata and download new tracks"));
