@@ -854,12 +854,10 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
 
         const { stream, filename } = downloadResult.result;
         const filePath = `${musicDir}/${filename}`;
+        const partPath = `${filePath}.part`;
 
         // Write stream to file
         const saveResult = yield* Effect.gen(function* () {
-          // Use .part file for atomic write
-          const partPath = `${filePath}.part`;
-
           // Stream to file using fs.sink
           // stream is already Stream<Uint8Array, ResponseError>
           yield* Stream.run(stream, fs.sink(partPath));
@@ -871,6 +869,10 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
         }).pipe(
           Effect.catchAll(
             Effect.fnUntraced(function* (e) {
+              // Clean up orphaned .part file
+              yield* fs
+                .remove(partPath)
+                .pipe(Effect.catchAll(() => Effect.void));
               yield* Effect.logError(`Failed to save file: ${e}`);
               return { success: false as const, error: e };
             }),
