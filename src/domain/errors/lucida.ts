@@ -27,3 +27,23 @@ export class CloudflareChallengeError extends Schema.TaggedError<CloudflareChall
     url: Schema.String, // The URL the user needs to visit to solve the challenge
   },
 ) {}
+
+export class LucidaDownloadError extends Schema.TaggedError<LucidaDownloadError>()(
+  "LucidaDownloadError",
+  {
+    message: Schema.String,
+    trackUrl: Schema.String,
+    phase: Schema.String, // "init" | "poll" | "stream" | "save"
+    cause: Schema.optional(Schema.Unknown),
+    isRetryable: Schema.optional(Schema.Boolean),
+  },
+) {}
+
+export class LucidaDownloadTimeoutError extends Schema.TaggedError<LucidaDownloadTimeoutError>()(
+  "LucidaDownloadTimeoutError",
+  {
+    message: Schema.String,
+    trackUrl: Schema.String,
+    timeoutMs: Schema.Number,
+  },
+) {}
