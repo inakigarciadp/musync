@@ -37,7 +37,32 @@ export class PathsService extends Effect.Service<PathsService>()(
         },
       );
 
-      return { getDataHome, getAppDataDir };
+      const getMusicDir = Effect.fn("PathsService.getMusicDir")(function* () {
+        // Try XDG_MUSIC_DIR first, fallback to ~/Music
+        const xdgMusicDir = yield* Config.string("XDG_MUSIC_DIR").pipe(
+          Config.orElse(() => Config.succeed(undefined)),
+        );
+        const home = yield* Config.string("HOME").pipe(
+          Config.orElse(() => Config.succeed("~")),
+        );
+
+        const baseDir = xdgMusicDir ?? `${home}/Music`;
+        const musicDir = `${baseDir}/musync`;
+
+        // Ensure directory exists
+        yield* fs.makeDirectory(musicDir, { recursive: true }).pipe(
+          Effect.mapError((error) =>
+            FileSystemError.make({
+              message: `Failed to create music directory: ${error.message}`,
+              path: musicDir,
+            }),
+          ),
+        );
+
+        return musicDir;
+      });
+
+      return { getDataHome, getAppDataDir, getMusicDir };
     }),
   },
 ) {}
