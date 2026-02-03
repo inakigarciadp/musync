@@ -97,6 +97,7 @@ const syncServiceLayer = SyncService.Default.pipe(
   Layer.provide(extractionServiceLayer),
   Layer.provide(lucidaServiceLayer),
   Layer.provide(downloadUrlMatchingServiceLayer),
+  Layer.provide(pathsServiceLayer),
 );
 
 // Infrastructure layers - provided at the bottom to close all leaked dependencies

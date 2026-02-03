@@ -1,6 +1,7 @@
 import { Prompt } from "@effect/cli";
+import { FileSystem } from "@effect/platform";
 import { and, count, eq, isNotNull, isNull } from "drizzle-orm";
-import { Console, Effect, Schedule } from "effect";
+import { Console, Effect, Schedule, Stream } from "effect";
 import type { DownloadUrlMatchingError } from "../domain/errors/download-url-matching";
 import type { SongExtractionError } from "../domain/errors/song-extraction";
 import { RateLimitExceededError } from "../domain/errors/sync";
@@ -9,6 +10,7 @@ import type { PlaylistId } from "../domain/models/youtube/playlist";
 import { DatabaseService } from "./database";
 import { DownloadUrlMatchingService } from "./download-url-matching";
 import { LucidaService } from "./lucida";
+import { PathsService } from "./paths";
 import { SongExtractionService } from "./song-extraction";
 import { YouTubeService } from "./youtube";
 
@@ -32,6 +34,7 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
     SongExtractionService.Default,
     LucidaService.Default,
     DownloadUrlMatchingService.Default,
+    PathsService.Default,
   ],
   effect: Effect.gen(function* () {
     const dbService = yield* DatabaseService;
@@ -39,6 +42,8 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
     const songExtraction = yield* SongExtractionService;
     const lucida = yield* LucidaService;
     const downloadMatching = yield* DownloadUrlMatchingService;
+    const paths = yield* PathsService;
+    const fs = yield* FileSystem.FileSystem;
 
     const syncPlaylistsToDb = Effect.fn("SyncService.syncPlaylistsToDb")(
       function* () {
@@ -727,11 +732,180 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
       },
     );
 
+    /**
+     * Step 6: Download songs via lucida.to
+     *
+     * For each song with downloadUrl set but downloadedAt is NULL:
+     * 1. Download the FLAC file from lucida.to
+     * 2. Save to music directory
+     * 3. Update downloadedAt in database
+     */
+    const downloadSongs = Effect.fn("SyncService.downloadSongs")(function* () {
+      const { schema, runQuery } = dbService;
+
+      yield* Effect.logInfo("Downloading songs");
+
+      // Get music directory
+      const musicDir = yield* paths.getMusicDir();
+      yield* Effect.logInfo(`Music directory: ${musicDir}`);
+
+      // Constants for retry logic
+      const MAX_RETRIES = 3;
+
+      // Get count of songs needing download
+      const { total } = yield* runQuery(async (db) => {
+        const result = await db
+          .select({ total: count() })
+          .from(schema.songs)
+          .where(
+            and(
+              isNotNull(schema.songs.downloadUrl),
+              isNull(schema.songs.downloadedAt),
+            ),
+          );
+        return result[0] ?? { total: 0 };
+      });
+
+      if (total === 0) {
+        yield* Effect.logInfo("No songs need downloading");
+        return;
+      }
+
+      yield* Effect.logInfo(`Found ${total} songs to download`);
+
+      // Track attempted downloads in this sync run to avoid infinite loops
+      // Failed tracks will be retried on the next sync command execution
+      const attemptedTrackIds = new Set<string>();
+
+      let downloaded = 0;
+      let failed = 0;
+
+      while (true) {
+        // Get next song that needs downloading, excluding already attempted ones
+        const song = yield* runQuery(async (db) => {
+          const results = await db
+            .select({
+              trackId: schema.songs.trackId,
+              songName: schema.songs.songName,
+              artistName: schema.songs.artistName,
+              downloadUrl: schema.songs.downloadUrl,
+            })
+            .from(schema.songs)
+            .where(
+              and(
+                isNotNull(schema.songs.downloadUrl),
+                isNull(schema.songs.downloadedAt),
+              ),
+            )
+            .all();
+
+          // Filter out already attempted tracks
+          return results.find((r) => !attemptedTrackIds.has(r.trackId)) ?? null;
+        });
+
+        if (!song || !song.downloadUrl) {
+          break;
+        }
+
+        // Mark as attempted immediately to avoid retrying in this run
+        attemptedTrackIds.add(song.trackId);
+
+        yield* Effect.logInfo(
+          `Downloading: ${song.artistName ?? "Unknown"} - ${song.songName ?? "Unknown"}`,
+        );
+
+        // Download with retry logic
+        // Errors are caught and logged here - only CloudflareChallengeError bubbles up
+        const downloadEffect = lucida.download(song.downloadUrl).pipe(
+          Effect.tapError((e) =>
+            Effect.logWarning(`Download attempt failed: ${e.message}`),
+          ),
+          Effect.retry({
+            schedule: Schedule.exponential("2 seconds").pipe(
+              Schedule.intersect(Schedule.recurs(MAX_RETRIES)),
+            ),
+            while: (e) =>
+              e._tag !== "CloudflareChallengeError" &&
+              (e._tag === "LucidaDownloadError"
+                ? e.isRetryable === true
+                : true),
+          }),
+        );
+
+        const downloadResult = yield* downloadEffect.pipe(
+          Effect.map((result) => ({ type: "success" as const, result })),
+          // Catch download errors - these are handled here, not bubbled up
+          Effect.catchTags({
+            LucidaDownloadError: (e) =>
+              Effect.succeed({ type: "failed" as const, error: e }),
+            LucidaDownloadTimeoutError: (e) =>
+              Effect.succeed({ type: "failed" as const, error: e }),
+          }),
+          // CloudflareChallengeError propagates up to CLI (already in AppError)
+        );
+
+        if (downloadResult.type === "failed") {
+          yield* Effect.logError(
+            `Failed to download ${song.songName}: ${downloadResult.error.message}`,
+          );
+          failed++;
+          continue;
+        }
+
+        const { stream, filename } = downloadResult.result;
+        const filePath = `${musicDir}/${filename}`;
+
+        // Write stream to file
+        const saveResult = yield* Effect.gen(function* () {
+          // Use .part file for atomic write
+          const partPath = `${filePath}.part`;
+
+          // Stream to file using fs.sink
+          // stream is already Stream<Uint8Array, ResponseError>
+          yield* Stream.run(stream, fs.sink(partPath));
+
+          // Atomic rename
+          yield* fs.rename(partPath, filePath);
+
+          return { success: true as const };
+        }).pipe(
+          Effect.catchAll(
+            Effect.fnUntraced(function* (e) {
+              yield* Effect.logError(`Failed to save file: ${e}`);
+              return { success: false as const, error: e };
+            }),
+          ),
+        );
+
+        if (!saveResult.success) {
+          failed++;
+          continue;
+        }
+
+        // Update database
+        yield* runQuery(async (db) => {
+          await db
+            .update(schema.songs)
+            .set({ downloadedAt: new Date() })
+            .where(eq(schema.songs.trackId, song.trackId))
+            .run();
+        });
+
+        downloaded++;
+        yield* Effect.logInfo(`Downloaded: ${filename}`);
+      }
+
+      yield* Effect.logInfo(
+        `Download complete: ${downloaded} succeeded, ${failed} failed`,
+      );
+    });
+
     return {
       syncPlaylistsToDb,
       extractSongsWithAi,
       handleManualReview,
       findDownloadUrls,
+      downloadSongs,
     };
   }),
 }) {}
