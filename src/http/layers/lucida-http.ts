@@ -26,7 +26,15 @@ export const LucidaHttpClientLive = Layer.effect(
 
     let client = pipe(
       baseClient,
-      HttpClient.mapRequest(HttpClientRequest.prependUrl(LUCIDA_BASE_URL)),
+      // Only prepend base URL if the request URL is not already absolute
+      HttpClient.mapRequest((request) => {
+        const url = request.url;
+        // Check if URL is already absolute (starts with http:// or https://)
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+          return request;
+        }
+        return HttpClientRequest.prependUrl(request, LUCIDA_BASE_URL);
+      }),
       HttpClient.mapRequest(
         HttpClientRequest.setHeader("User-Agent", userAgent),
       ),
