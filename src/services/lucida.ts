@@ -28,117 +28,7 @@ interface DownloadStatus {
 }
 
 /**
- * Extract tracks from embedded JSON in lucida.to HTML.
- *
- * The HTML contains SvelteKit data in the format:
- * const data = [{...}, { data: { results: { results: { tracks: [...] } } } }];
- *
- * We use a bracket-counting parser because:
- * 1. Standard JSON.parse fails on partial JSON
- * 2. The JSON is embedded in JavaScript, not standalone
- *
- * Returns Effect that:
- * - Succeeds with tracks array (may be empty if no JSON block found)
- * - Fails with LucidaParseError if JSON parsing fails
- */
-const extractTracksFromJson = Effect.fn("extractTracksFromJson")(function* (
-  html: string,
-  query: string,
-) {
-  const startMarker = "const data = [";
-  const startIdx = html.indexOf(startMarker);
-
-  yield* Effect.logDebug(
-    `[JSON] Looking for marker "${startMarker}" - found at index: ${startIdx}`,
-  );
-
-  if (startIdx === -1) {
-    // No JSON block found - not an error, just no embedded data
-    yield* Effect.logDebug("[JSON] No JSON block found in HTML");
-    return [];
-  }
-
-  const jsonStart = startIdx + "const data = ".length;
-
-  // Bracket-counting parser to find the end of the JSON array
-  let bracketCount = 0;
-  let inString = false;
-  let escapeNext = false;
-  let endIdx = jsonStart;
-
-  for (let i = jsonStart; i < html.length; i++) {
-    const char = html[i];
-
-    if (escapeNext) {
-      escapeNext = false;
-      continue;
-    }
-
-    if (char === "\\") {
-      escapeNext = true;
-      continue;
-    }
-
-    if (char === '"' && !inString) {
-      inString = true;
-    } else if (char === '"' && inString) {
-      inString = false;
-    } else if (!inString) {
-      if (char === "[" || char === "{") {
-        bracketCount++;
-      } else if (char === "]" || char === "}") {
-        bracketCount--;
-        if (bracketCount === 0 && html.slice(i, i + 2) === "];") {
-          endIdx = i + 1;
-          break;
-        }
-      }
-    }
-  }
-
-  const jsonStr = html.slice(jsonStart, endIdx);
-
-  yield* Effect.logDebug(
-    `[JSON] Extracted JSON string (first 500 chars): ${jsonStr.slice(0, 500)}`,
-  );
-  yield* Effect.logDebug(`[JSON] JSON string length: ${jsonStr.length}`);
-
-  // Wrap JSON.parse in Effect.try to properly fail on parse errors
-  const data = yield* Effect.try({
-    try: () => JSON.parse(jsonStr),
-    catch: (e) =>
-      new LucidaParseError({
-        message: `JSON parse failed: ${e instanceof Error ? e.message : String(e)}`,
-        query,
-        parseMethod: "json",
-        cause: e,
-      }),
-  });
-
-  yield* Effect.logDebug(
-    `[JSON] Parsed data structure: ${JSON.stringify(Object.keys(data || {})).slice(0, 200)}`,
-  );
-  yield* Effect.logDebug(
-    `[JSON] data[1] exists: ${!!data?.[1]}, data[1].data exists: ${!!data?.[1]?.data}`,
-  );
-
-  // Navigate: data[1].data.results.results.tracks
-  const tracks = data?.[1]?.data?.results?.results?.tracks ?? [];
-
-  yield* Effect.logDebug(`[JSON] Found ${tracks.length} tracks in JSON`);
-
-  // biome-ignore lint/suspicious/noExplicitAny: JSON parsing returns unknown structure
-  return tracks.map((track: any) => ({
-    name: track.title ?? "",
-    // biome-ignore lint/suspicious/noExplicitAny: JSON parsing returns unknown structure
-    artist: (track.artists ?? []).map((a: any) => a.name).join(", "),
-    album: track.album?.title ?? null,
-    url: track.url ?? "",
-  })) as LucidaTrack[];
-});
-
-/**
- * Fallback HTML parsing for lucida.to search results.
+ * HTML parsing for lucida.to search results.
  *
  * Expected HTML structure:
  * <div class="search-result-track">
@@ -258,66 +148,15 @@ const extractTracksFromHtml = Effect.fn("extractTracksFromHtml")(function* (
 });
 
 /**
- * Parse search results - try JSON first, fallback to HTML.
- *
- * Graceful degradation:
- * - If JSON succeeds with tracks, return them
- * - If JSON fails or returns empty, log warning and try HTML
- * - If HTML also fails, propagate the error
- * - If both return empty without errors, return empty (legitimate no results)
+ * Parse search results from HTML.
  */
 const parseSearchResults = Effect.fn("parseSearchResults")(function* (
   html: string,
   query: string,
 ) {
-  yield* Effect.logDebug(`[PARSE] Starting parse for query: "${query}"`);
+  yield* Effect.logDebug(`[PARSE] Starting HTML parse for query: "${query}"`);
 
-  // Try JSON first
-  const jsonResult = yield* extractTracksFromJson(html, query).pipe(
-    Effect.catchTag(
-      "LucidaParseError",
-      Effect.fnUntraced(function* (jsonError) {
-        // JSON failed - log warning and try HTML
-        yield* Effect.logWarning(
-          `JSON parsing failed for "${query}": ${jsonError.message}`,
-        );
-
-        yield* Effect.logDebug("[PARSE] JSON failed, attempting HTML fallback");
-
-        // Try HTML fallback
-        return yield* extractTracksFromHtml(html, query).pipe(
-          Effect.catchTag(
-            "LucidaParseError",
-            (htmlError) =>
-              // Both failed - this is a real error
-              new LucidaParseError({
-                message: `Both parsers failed. JSON: ${jsonError.message}. HTML: ${htmlError.message}`,
-                query,
-                parseMethod: "both",
-                cause: { json: jsonError, html: htmlError },
-              }),
-          ),
-        );
-      }),
-    ),
-  );
-
-  yield* Effect.logDebug(
-    `[PARSE] JSON result: ${jsonResult.length} tracks (${jsonResult.length > 0 ? "success" : "empty"})`,
-  );
-
-  // If JSON succeeded with tracks, use them
-  if (jsonResult.length > 0) {
-    yield* Effect.logDebug("[PARSE] Using JSON results");
-    return jsonResult;
-  }
-
-  // JSON returned empty - try HTML (might have results JSON missed)
-  yield* Effect.logDebug("[PARSE] JSON empty, trying HTML as additional check");
-  const htmlResult = yield* extractTracksFromHtml(html, query).pipe(
-    // If HTML fails but JSON worked (returned empty), that's OK - return empty
-    Effect.catchTag("LucidaParseError", () => Effect.succeed([])),
-  );
+  const htmlResult = yield* extractTracksFromHtml(html, query);
 
   yield* Effect.logDebug(
     `[PARSE] HTML result: ${htmlResult.length} tracks (${htmlResult.length > 0 ? "success" : "empty"})`,
