@@ -7,35 +7,32 @@ export const syncCommand = Command.make(
   {},
   Effect.fnUntraced(function* () {
     // This command will do quite a few things:
-    // 1. Sync playlists and its tracks to our database. In the same database transaction we will:
+    // 1. Sync playlists and their tracks to our database. In the same database transaction we will:
     //   - Delete everything from the join table
     //   - Fetch all tracked playlists from the database
     //   - For each playlist, fetch its tracks from the API and insert them both in the tracks table and in the join table.
-    // 2. Using GPT OSS 120B we will extract the song's name and artist from each track's title and channel, if it does not exist in our database yet.
-
-    // 3. For each track, we will use a service to find the song in the download sources (maybe we will use GPT OSS 120B for that as well) and update the track record with the download URL.
-
-    // 4. We query the database for matches that need manual review (there is a database column for that) and prompt the user for them.
-
-    // 5. After we have the names for all tracks, we will go and find th download URLs for each track for next step. It will be done through https://lucida.to/ via scraping. Using the song name and the artist name we will search for the song, and pass the results to an AI model (GPT OSS 120B) to pick the best match and extract the download URL. If the AI can't give an answer, we will prompt the user for manual review.
-
-    // 6. Then, we will download all new tracks using the download URLs and store them in our local storage.
-
-    // 7. Finally, we will generate the playlists files (M3U8) for the local media player to use.
+    // 2. For each track, extract the song's name and artist from the track's title and channel using GPT OSS 120B (if not already present in the database).
+    // 3. Query the database for matches that need manual review (there is a database column for that) and prompt the user for them.
+    // 4. For tracks missing download URLs, search for the song on https://lucida.to/ using the song name and artist.
+    //    Use an AI model (GPT OSS 120B) to pick the best match and extract the download URL. If the AI can't give an answer, prompt the user for manual review.
+    // 5. Download all new tracks using the download URLs and store them in local storage.
+    // 6. Generate the playlist files (M3U8) for the local media player to use.
 
     const syncService = yield* SyncService;
 
-    // Step 1-2: Sync playlists and extract song metadata
+    // Step 1: Sync playlists and tracks to DB
     yield* syncService.syncPlaylistsToDb();
+
+    // Step 2: Extract song metadata with AI
     yield* syncService.extractSongsWithAi();
 
-    // Step 3-4: Handle manual review for song extraction
+    // Step 3: Handle manual review for song extraction
     yield* syncService.handleManualReview();
 
-    // Step 5: Find download URLs via lucida.to (prompts user inline if AI unsure)
+    // Step 4: Find download URLs via lucida.to (prompts user inline if AI unsure)
     yield* syncService.findDownloadUrls();
 
-    // Step 6: Download songs
+    // Step 5: Download songs
     yield* syncService.downloadSongs();
 
     yield* Effect.logInfo("Sync process completed");
