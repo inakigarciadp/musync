@@ -107,4 +107,4 @@ XDG_DATA_HOME=/custom/path musync sync
 ### TODOS
 
 - When we prompt a user for input, (cloudflare set, or step 5 of the sync command) the rendering is broken (fixed in branch fix/cli-prompt but i'm not sure if i like it)
-- Lucida http already prepends the https://lucida.to/ url, we should not add it in the database.
+- Some songs cannot be downloaded, so in step 4 there should be an option when prompting the user so the user can set that song as non-downloadable (so it won't be prompted again).
