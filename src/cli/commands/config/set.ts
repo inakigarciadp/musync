@@ -18,6 +18,10 @@ export const configSetCommand = Command.make(
   Effect.fnUntraced(function* ({ key, value }: { key: string; value: string }) {
     const userConfig = yield* UserConfigService;
     yield* userConfig.set(key, value);
-    yield* Console.log(`Set ${key} = ${value}`);
+    if (key === "outputDirectory" && value === "") {
+      yield* Console.log(`Reset ${key} to default (XDG music directory)`);
+    } else {
+      yield* Console.log(`Set ${key} = ${value}`);
+    }
   }),
 ).pipe(Command.withDescription("Set preference"));
