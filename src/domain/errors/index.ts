@@ -39,7 +39,7 @@ import type {
 // Song extraction errors
 import type { SongExtractionError } from "./song-extraction";
 // Sync errors
-import type { RateLimitExceededError } from "./sync";
+import type { RateLimitExceededError, UrlParseError } from "./sync";
 // YouTube errors
 import type {
   AuthenticationRequiredError,
@@ -97,6 +97,7 @@ export type AppError =
   | SongExtractionError
   // Sync errors
   | RateLimitExceededError
+  | UrlParseError
   // HTTP errors (from @effect/platform)
   | HttpClientError
   // CLI validation errors (from @effect/cli)

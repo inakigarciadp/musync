@@ -12,3 +12,14 @@ export class RateLimitExceededError extends Schema.TaggedError<RateLimitExceeded
     retryCount: Schema.Number,
   },
 ) {}
+
+/**
+ * Error thrown when a URL cannot be parsed or decoded.
+ */
+export class UrlParseError extends Schema.TaggedError<UrlParseError>()(
+  "UrlParseError",
+  {
+    message: Schema.String,
+    url: Schema.String,
+  },
+) {}

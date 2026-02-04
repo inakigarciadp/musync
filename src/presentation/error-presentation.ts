@@ -201,6 +201,12 @@ const formatError: (error: AppError) => FormattedError =
       suggestion: `The ${e.service} service rate limited us ${e.retryCount} times. Try again later.`,
       exitCode: 5,
     }),
+    UrlParseError: (e) => ({
+      title: "URL parse error",
+      message: e.message,
+      suggestion: `Could not parse URL: ${e.url}`,
+      exitCode: 1,
+    }),
 
     // General errors
     NotImplementedError: (e) => ({

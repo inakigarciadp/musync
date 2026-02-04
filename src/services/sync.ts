@@ -4,7 +4,7 @@ import { and, count, eq, isNotNull, isNull } from "drizzle-orm";
 import { Console, Effect, Schedule, Stream } from "effect";
 import type { DownloadUrlMatchingError } from "../domain/errors/download-url-matching";
 import type { SongExtractionError } from "../domain/errors/song-extraction";
-import { RateLimitExceededError } from "../domain/errors/sync";
+import { RateLimitExceededError, UrlParseError } from "../domain/errors/sync";
 import type { LucidaTrack } from "../domain/models/lucida";
 import type { PlaylistId } from "../domain/models/youtube/playlist";
 import { DatabaseService } from "./database";
@@ -436,11 +436,13 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
             if (encoded) {
               const decoded = yield* Effect.try({
                 try: () => decodeURIComponent(encoded),
-                catch: () => null,
+                catch: () =>
+                  new UrlParseError({
+                    message: "Failed to decode URL parameter",
+                    url: trimmed,
+                  }),
               });
-              if (decoded) {
-                return decoded;
-              }
+              return decoded;
             }
           }
 
