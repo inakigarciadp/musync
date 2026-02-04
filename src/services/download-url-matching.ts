@@ -4,13 +4,17 @@ import { Config, Effect, JSONSchema, Redacted, Schema } from "effect";
 import { DownloadUrlMatchingError } from "../domain/errors/download-url-matching";
 import { DownloadUrlMatch } from "../domain/models/download-url-match";
 import type { LucidaTrack } from "../domain/models/lucida";
+import { UserConfigService } from "./user-config";
 
 export class DownloadUrlMatchingService extends Effect.Service<DownloadUrlMatchingService>()(
   "DownloadUrlMatchingService",
   {
     accessors: true,
+    dependencies: [UserConfigService.Default],
     effect: Effect.gen(function* () {
       const apiKey = yield* Config.redacted("CEREBRAS_API_KEY");
+      const userConfig = yield* UserConfigService;
+      const cerebrasModel = yield* userConfig.getCerebrasModel();
       const cerebras = createCerebras({
         apiKey: Redacted.value(apiKey),
       });
@@ -37,7 +41,7 @@ export class DownloadUrlMatchingService extends Effect.Service<DownloadUrlMatchi
         const result = yield* Effect.tryPromise({
           try: () =>
             generateText({
-              model: cerebras("gpt-oss-120b"),
+              model: cerebras(cerebrasModel),
               output: Output.object({
                 schema: aiJsonSchema(effectJsonSchema),
               }),

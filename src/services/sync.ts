@@ -10,8 +10,8 @@ import type { PlaylistId } from "../domain/models/youtube/playlist";
 import { DatabaseService } from "./database";
 import { DownloadUrlMatchingService } from "./download-url-matching";
 import { LucidaService } from "./lucida";
-import { PathsService } from "./paths";
 import { SongExtractionService } from "./song-extraction";
+import { UserConfigService } from "./user-config";
 import { YouTubeService } from "./youtube";
 
 /**
@@ -34,7 +34,7 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
     SongExtractionService.Default,
     LucidaService.Default,
     DownloadUrlMatchingService.Default,
-    PathsService.Default,
+    UserConfigService.Default,
   ],
   effect: Effect.gen(function* () {
     const dbService = yield* DatabaseService;
@@ -42,7 +42,7 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
     const songExtraction = yield* SongExtractionService;
     const lucida = yield* LucidaService;
     const downloadMatching = yield* DownloadUrlMatchingService;
-    const paths = yield* PathsService;
+    const userConfig = yield* UserConfigService;
     const fs = yield* FileSystem.FileSystem;
 
     const syncPlaylistsToDb = Effect.fn("SyncService.syncPlaylistsToDb")(
@@ -745,8 +745,8 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
 
       yield* Effect.logInfo("Downloading songs");
 
-      // Get music directory
-      const musicDir = yield* paths.getMusicDir();
+      // Get music directory (from user config, or XDG fallback)
+      const musicDir = yield* userConfig.getEffectiveMusicDir();
       yield* Effect.logInfo(`Music directory: ${musicDir}`);
 
       // Constants for retry logic
