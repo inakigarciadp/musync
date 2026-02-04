@@ -3,13 +3,17 @@ import { jsonSchema as aiJsonSchema, generateText, Output } from "ai";
 import { Config, Effect, JSONSchema, Redacted, Schema } from "effect";
 import { SongExtractionError } from "../domain/errors/song-extraction";
 import { SongExtraction } from "../domain/models/song";
+import { UserConfigService } from "./user-config";
 
 export class SongExtractionService extends Effect.Service<SongExtractionService>()(
   "SongExtractionService",
   {
     accessors: true,
+    dependencies: [UserConfigService.Default],
     effect: Effect.gen(function* () {
       const apiKey = yield* Config.redacted("CEREBRAS_API_KEY");
+      const userConfig = yield* UserConfigService;
+      const cerebrasModel = yield* userConfig.getCerebrasModel();
       const cerebras = createCerebras({
         apiKey: Redacted.value(apiKey),
       });
@@ -22,7 +26,7 @@ export class SongExtractionService extends Effect.Service<SongExtractionService>
         const result = yield* Effect.tryPromise({
           try: () =>
             generateText({
-              model: cerebras("gpt-oss-120b"),
+              model: cerebras(cerebrasModel),
               output: Output.object({
                 schema: aiJsonSchema(effectJsonSchema),
               }),
