@@ -110,4 +110,3 @@ XDG_DATA_HOME=/custom/path musync sync
 - Config the cerebras model through the json file.
 - When we prompt a user for input, (cloudflare set, or step 5 of the sync command) the rendering is broken.
 - Lucida http already prepends the https://lucida.to/ url, we should not add it in the database.
-- In cloudflare set command, is UserAgent is empty by the user, mantain the previous one instead of setting an empty one.
