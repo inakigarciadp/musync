@@ -128,6 +128,29 @@ const formatError: (error: AppError) => FormattedError =
       exitCode: 1,
     }),
 
+    // User config errors
+    ConfigNotFoundError: (e) => ({
+      title: "Config not found",
+      message: e.message,
+      suggestion: "Run 'musync init' to initialize the configuration.",
+      exitCode: 1,
+    }),
+    ConfigReadError: (e) => ({
+      title: "Config read error",
+      message: e.message,
+      exitCode: 1,
+    }),
+    ConfigWriteError: (e) => ({
+      title: "Config write error",
+      message: e.message,
+      exitCode: 1,
+    }),
+    ConfigValidationError: (e) => ({
+      title: "Config validation error",
+      message: e.message,
+      exitCode: 1,
+    }),
+
     // Song extraction errors
     SongExtractionError: (e) => ({
       title: "Metadata extraction error",

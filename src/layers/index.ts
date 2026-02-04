@@ -13,6 +13,7 @@ import { LucidaService } from "../services/lucida";
 import { PathsService } from "../services/paths";
 import { SongExtractionService } from "../services/song-extraction";
 import { SyncService } from "../services/sync";
+import { UserConfigService } from "../services/user-config";
 import { YouTubeService } from "../services/youtube";
 
 // Infrastructure - provided at app root
@@ -35,6 +36,11 @@ const pathsServiceLayer = PathsService.Default.pipe(
   Layer.provide(configProviderLayer),
 );
 
+const userConfigServiceLayer = UserConfigService.Default.pipe(
+  Layer.provide(pathsServiceLayer),
+  Layer.provide(BunFileSystem.layer),
+);
+
 const configServiceLayer = ConfigService.Default.pipe(
   Layer.provide(pathsServiceLayer),
   Layer.provide(configProviderLayer),
@@ -46,6 +52,7 @@ const databaseServiceLayer = DatabaseService.Default.pipe(
 );
 
 const extractionServiceLayer = SongExtractionService.Default.pipe(
+  Layer.provide(userConfigServiceLayer),
   Layer.provide(configProviderLayer),
 );
 
@@ -69,6 +76,7 @@ const lucidaServiceLayer = LucidaService.Default.pipe(
 
 // Download URL matching service (uses AI)
 const downloadUrlMatchingServiceLayer = DownloadUrlMatchingService.Default.pipe(
+  Layer.provide(userConfigServiceLayer),
   Layer.provide(configProviderLayer),
 );
 
@@ -97,7 +105,7 @@ const syncServiceLayer = SyncService.Default.pipe(
   Layer.provide(extractionServiceLayer),
   Layer.provide(lucidaServiceLayer),
   Layer.provide(downloadUrlMatchingServiceLayer),
-  Layer.provide(pathsServiceLayer),
+  Layer.provide(userConfigServiceLayer),
 );
 
 // Infrastructure layers - provided at the bottom to close all leaked dependencies
@@ -115,4 +123,6 @@ export const AppLayer = Layer.mergeAll(
   databaseServiceLayer,
   syncServiceLayer,
   cloudflareCredentialsServiceLayer,
+  userConfigServiceLayer,
+  pathsServiceLayer,
 ).pipe(Layer.provide(infrastructureLayer));

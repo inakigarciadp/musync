@@ -17,6 +17,13 @@ import type {
   TokenRefreshError,
   TokenStorageError,
 } from "./auth";
+// User config errors
+import type {
+  ConfigNotFoundError,
+  ConfigReadError,
+  ConfigValidationError,
+  ConfigWriteError,
+} from "./config";
 // Database errors
 import type { DatabaseError } from "./database";
 // Download URL matching errors
@@ -75,6 +82,11 @@ export type AppError =
   | YouTubeApiError
   // Database errors
   | DatabaseError
+  // User config errors
+  | ConfigNotFoundError
+  | ConfigReadError
+  | ConfigWriteError
+  | ConfigValidationError
   // Download URL matching errors
   | DownloadUrlMatchingError
   // Lucida errors
