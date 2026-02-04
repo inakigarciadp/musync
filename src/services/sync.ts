@@ -421,9 +421,30 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
         }
         if (action.type === "manual") {
           const url = yield* Prompt.text({
-            message: "Enter Tidal track URL (or leave empty to skip):",
+            message:
+              "Enter Tidal track URL (lucida.to URLs will be converted, or leave empty to skip):",
           });
-          return url.trim() || null;
+          const trimmed = url.trim();
+          if (!trimmed) {
+            return null;
+          }
+
+          // Normalize lucida.to URLs to Tidal URLs
+          if (trimmed.startsWith("https://lucida.to/?url=")) {
+            const match = /[?&]url=([^&]+)/.exec(trimmed);
+            const encoded = match?.[1];
+            if (encoded) {
+              const decoded = yield* Effect.try({
+                try: () => decodeURIComponent(encoded),
+                catch: () => null,
+              });
+              if (decoded) {
+                return decoded;
+              }
+            }
+          }
+
+          return trimmed;
         }
         return null as string | null;
       },

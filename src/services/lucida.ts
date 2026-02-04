@@ -82,6 +82,24 @@ const extractTracksFromHtml = Effect.fn("extractTracksFromHtml")(function* (
     `[HTML] Found ${allMatches.length} track blocks with regex`,
   );
 
+  const extractLucidaTargetUrl = (href: string): string | null => {
+    const urlMatch = /[?&]url=([^&]+)/.exec(href);
+    if (!urlMatch) {
+      return null;
+    }
+
+    const encoded = urlMatch[1];
+    if (!encoded) {
+      return null;
+    }
+
+    try {
+      return decodeURIComponent(encoded);
+    } catch {
+      return null;
+    }
+  };
+
   for (const match of allMatches) {
     const block = match[1];
     if (!block) continue;
@@ -108,18 +126,23 @@ const extractTracksFromHtml = Effect.fn("extractTracksFromHtml")(function* (
       `[HTML] Extracted - linkHref: ${linkHref}, trackName: ${trackName}, artist: ${artistMatch?.[1]}`,
     );
 
-    if (linkHref && trackName) {
+    if (typeof linkHref === "string" && trackName) {
       // The href is like "/?url=http%3A%2F%2Fwww.tidal.com%2Ftrack%2F45474649"
-      // We need the full lucida.to URL which will handle the redirect
-      const trackUrl = linkHref.startsWith("http")
-        ? linkHref
-        : `https://lucida.to${linkHref}`;
+      // Extract and decode the target URL (Tidal) from the lucida link
+      const tidalUrl = extractLucidaTargetUrl(linkHref);
+
+      if (!tidalUrl) {
+        yield* Effect.logDebug(
+          `[HTML] Skipping track - could not extract url param from: ${linkHref}`,
+        );
+        continue;
+      }
 
       tracks.push({
         name: trackName.trim(),
         artist: artistMatch?.[1]?.trim() ?? "",
         album: albumMatch?.[1]?.trim() ?? null,
-        url: trackUrl,
+        url: tidalUrl,
       });
     }
   }
@@ -298,16 +321,16 @@ export class LucidaService extends Effect.Service<LucidaService>()(
        * 3. Poll status endpoint until "completed"
        * 4. Stream the audio file
        *
-       * @param lucidaUrl - The lucida.to URL (e.g., https://lucida.to/?url=...)
+       * @param tidalUrl - The Tidal track URL
        * @returns Stream of Uint8Array chunks and the filename
        */
       const download = Effect.fn("LucidaService.download")(function* (
-        lucidaUrl: string,
+        tidalUrl: string,
       ) {
         yield* Effect.logDebug(
           `[DOWNLOAD] ========== Starting download flow ==========`,
         );
-        yield* Effect.logDebug(`[DOWNLOAD] Lucida URL: ${lucidaUrl}`);
+        yield* Effect.logDebug(`[DOWNLOAD] Tidal URL: ${tidalUrl}`);
 
         // Rate limiting
         const now = Date.now();
@@ -324,7 +347,8 @@ export class LucidaService extends Effect.Service<LucidaService>()(
 
         // Step 1: Fetch page and extract CSRF token
         yield* Effect.logDebug(`[DOWNLOAD] Step 1: Fetching page data...`);
-        const pageData = yield* fetchPageData(lucidaUrl);
+        const lucidaPath = `/?url=${encodeURIComponent(tidalUrl)}`;
+        const pageData = yield* fetchPageData(tidalUrl, lucidaPath);
         yield* Effect.logDebug(
           `[DOWNLOAD] Step 1 complete: got token and trackUrl`,
         );
@@ -357,20 +381,21 @@ export class LucidaService extends Effect.Service<LucidaService>()(
 
       // Helper: Fetch page and extract CSRF token + track URL
       const fetchPageData = Effect.fn("LucidaService.fetchPageData")(function* (
-        lucidaUrl: string,
+        tidalUrl: string,
+        lucidaPath: string,
       ) {
         yield* Effect.logDebug(
-          `[DOWNLOAD] Fetching page data from: ${lucidaUrl}`,
+          `[DOWNLOAD] Fetching lucida page for: ${tidalUrl}`,
         );
 
-        const request = HttpClientRequest.get(lucidaUrl);
+        const request = HttpClientRequest.get(lucidaPath);
 
         const response = yield* http.execute(request).pipe(
           Effect.mapError(
             (e) =>
               new LucidaDownloadError({
                 message: `Failed to fetch page: ${e.message}`,
-                trackUrl: lucidaUrl,
+                trackUrl: tidalUrl,
                 phase: "init",
                 cause: e,
                 isRetryable: true,
@@ -387,7 +412,7 @@ export class LucidaService extends Effect.Service<LucidaService>()(
             (e) =>
               new LucidaDownloadError({
                 message: `Failed to read response: ${e.message}`,
-                trackUrl: lucidaUrl,
+                trackUrl: tidalUrl,
                 phase: "init",
                 cause: e,
                 isRetryable: true,
@@ -436,7 +461,7 @@ export class LucidaService extends Effect.Service<LucidaService>()(
           return yield* new LucidaDownloadError({
             message:
               "Could not find page data in HTML (start marker not found)",
-            trackUrl: lucidaUrl,
+            trackUrl: tidalUrl,
             phase: "init",
             isRetryable: false,
           });
@@ -460,7 +485,7 @@ export class LucidaService extends Effect.Service<LucidaService>()(
           );
           return yield* new LucidaDownloadError({
             message: "Could not find page data in HTML (end marker not found)",
-            trackUrl: lucidaUrl,
+            trackUrl: tidalUrl,
             phase: "init",
             isRetryable: false,
           });
@@ -495,7 +520,7 @@ export class LucidaService extends Effect.Service<LucidaService>()(
           catch: (e) =>
             new LucidaDownloadError({
               message: `Failed to parse page data JSON: ${e}`,
-              trackUrl: lucidaUrl,
+              trackUrl: tidalUrl,
               phase: "init",
               cause: e,
               isRetryable: false,
@@ -548,7 +573,7 @@ export class LucidaService extends Effect.Service<LucidaService>()(
           );
           return yield* new LucidaDownloadError({
             message: "Missing required fields in page data",
-            trackUrl: lucidaUrl,
+            trackUrl: tidalUrl,
             phase: "init",
             isRetryable: false,
           });
