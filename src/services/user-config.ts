@@ -109,7 +109,18 @@ export class UserConfigService extends Effect.Service<UserConfigService>()(
         }
 
         // Validate outputDirectory exists if that's what we're setting
+        // Empty string resets to null (use XDG default)
         if (key === "outputDirectory") {
+          if (value === "") {
+            const currentConfig = yield* read();
+            const updatedConfig = new UserConfig({
+              ...currentConfig,
+              outputDirectory: null,
+            });
+            yield* write(updatedConfig);
+            return updatedConfig;
+          }
+
           const exists = yield* fs.exists(value).pipe(
             Effect.mapError(() =>
               ConfigValidationError.make({
