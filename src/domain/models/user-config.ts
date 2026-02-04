@@ -6,7 +6,9 @@ export class UserConfig extends Schema.Class<UserConfig>("UserConfig")({
   cerebrasModel: Schema.optionalWith(Schema.String, {
     default: () => DEFAULT_CEREBRAS_MODEL,
   }),
-  outputDirectory: Schema.NullOr(Schema.String),
+  outputDirectory: Schema.optionalWith(Schema.NullOr(Schema.String), {
+    default: () => null,
+  }),
 }) {}
 
 export const ValidConfigKeys = ["cerebrasModel", "outputDirectory"] as const;
