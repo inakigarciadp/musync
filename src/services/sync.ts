@@ -1,5 +1,5 @@
 import { Prompt } from "@effect/cli";
-import { FileSystem } from "@effect/platform";
+import { FileSystem, Terminal } from "@effect/platform";
 import { and, count, eq, isNotNull, isNull, ne, or } from "drizzle-orm";
 import { Console, Effect, Schedule, Stream } from "effect";
 import type { DownloadUrlMatchingError } from "../domain/errors/download-url-matching";
@@ -7,6 +7,7 @@ import type { SongExtractionError } from "../domain/errors/song-extraction";
 import { RateLimitExceededError, UrlParseError } from "../domain/errors/sync";
 import type { LucidaTrack } from "../domain/models/lucida";
 import type { PlaylistId } from "../domain/models/youtube/playlist";
+import { truncate } from "../presentation/formatters/utils";
 import { DatabaseService } from "./database";
 import { DownloadUrlMatchingService } from "./download-url-matching";
 import { LucidaService } from "./lucida";
@@ -388,13 +389,22 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
           value: SelectValue;
         }> = [];
 
+        // Get terminal width to truncate choice titles and prevent wrapping.
+        // @effect/cli's Prompt.select has a rendering bug where handleClear
+        // doesn't account for wrapped lines, causing duplicate prompt lines.
+        const terminal = yield* Terminal.Terminal;
+        const columns = yield* terminal.columns;
+        // 4 chars padding: 2 for pointer/space prefix (❯ ) + 2 safety margin
+        const maxTitleLength = Math.max(columns - 4, 20);
+
         if (searchResults.length > 0) {
           yield* Console.log("\nSearch results from Tidal:");
           for (let i = 0; i < searchResults.length; i++) {
             const r = searchResults[i];
             if (r) {
+              const title = `${i + 1}. ${r.name} by ${r.artist}${r.album ? ` (Album: ${r.album})` : ""}`;
               const choice: { title: string; value: SelectValue } = {
-                title: `${i + 1}. ${r.name} by ${r.artist}${r.album ? ` (Album: ${r.album})` : ""}`,
+                title: truncate(title, maxTitleLength),
                 value: { type: "select", index: i },
               };
               choices.push(choice);

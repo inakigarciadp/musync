@@ -105,5 +105,3 @@ XDG_DATA_HOME=/custom/path musync sync
 ```
 
 ### TODOS
-
-- When we prompt a user for input, (cloudflare set, or step 5 of the sync command) the rendering is broken (fixed in branch fix/cli-prompt but i'm not sure if i like it)
