@@ -1,6 +1,6 @@
 import { Prompt } from "@effect/cli";
 import { FileSystem } from "@effect/platform";
-import { and, count, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, count, eq, isNotNull, isNull, ne, or } from "drizzle-orm";
 import { Console, Effect, Schedule, Stream } from "effect";
 import type { DownloadUrlMatchingError } from "../domain/errors/download-url-matching";
 import type { SongExtractionError } from "../domain/errors/song-extraction";
@@ -380,7 +380,8 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
         type SelectValue =
           | { type: "select"; index: number }
           | { type: "manual" }
-          | { type: "skip" };
+          | { type: "skip" }
+          | { type: "not_downloadable" };
 
         const choices: Array<{
           title: string;
@@ -409,6 +410,10 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
           title: "Skip this track",
           value: { type: "skip" },
         });
+        choices.push({
+          title: "Mark as non-downloadable (skip forever)",
+          value: { type: "not_downloadable" },
+        });
 
         const action = yield* Prompt.select({
           message: "Choose an action:",
@@ -417,7 +422,9 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
 
         if (action.type === "select") {
           const selectedResult = searchResults[action.index];
-          return selectedResult ? selectedResult.url : null;
+          return selectedResult
+            ? { type: "url" as const, url: selectedResult.url }
+            : { type: "skip" as const };
         }
         if (action.type === "manual") {
           const url = yield* Prompt.text({
@@ -426,7 +433,7 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
           });
           const trimmed = url.trim();
           if (!trimmed) {
-            return null;
+            return { type: "skip" as const };
           }
 
           // Normalize lucida.to URLs to Tidal URLs
@@ -442,13 +449,16 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
                     url: trimmed,
                   }),
               });
-              return decoded;
+              return { type: "url" as const, url: decoded };
             }
           }
 
-          return trimmed;
+          return { type: "url" as const, url: trimmed };
         }
-        return null as string | null;
+        if (action.type === "not_downloadable") {
+          return { type: "not_downloadable" as const };
+        }
+        return { type: "skip" as const };
       },
     );
 
@@ -490,6 +500,10 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
                 isNotNull(schema.songs.songName),
                 isNotNull(schema.songs.artistName),
                 eq(schema.songs.extractionState, "finalized"),
+                or(
+                  isNull(schema.songs.downloadable),
+                  ne(schema.songs.downloadable, false),
+                ),
               ),
             );
           return result[0] ?? { total: 0 };
@@ -525,6 +539,10 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
                   isNotNull(schema.songs.songName),
                   isNotNull(schema.songs.artistName),
                   eq(schema.songs.extractionState, "finalized"),
+                  or(
+                    isNull(schema.songs.downloadable),
+                    ne(schema.songs.downloadable, false),
+                  ),
                 ),
               )
               .all();
@@ -593,11 +611,15 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
             );
 
           // Handle search outcome
-          let downloadUrl: string | null = null;
+          let promptResult:
+            | { type: "url"; url: string }
+            | { type: "skip" }
+            | { type: "not_downloadable" }
+            | null = null;
 
           if (searchOutcome.type === "search_failed") {
             // Search failed - prompt user with error context
-            downloadUrl = yield* promptForDownloadUrl(
+            promptResult = yield* promptForDownloadUrl(
               {
                 songName: song.songName,
                 artistName: song.artistName,
@@ -608,7 +630,7 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
             );
           } else if (searchOutcome.type === "parse_failed") {
             // Parse failed - prompt user with error context
-            downloadUrl = yield* promptForDownloadUrl(
+            promptResult = yield* promptForDownloadUrl(
               {
                 songName: song.songName,
                 artistName: song.artistName,
@@ -626,7 +648,7 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
               yield* Effect.logWarning(
                 `No results found for: ${song.artistName} - ${song.songName}`,
               );
-              downloadUrl = yield* promptForDownloadUrl(
+              promptResult = yield* promptForDownloadUrl(
                 {
                   songName: song.songName,
                   artistName: song.artistName,
@@ -679,7 +701,7 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
 
               if (matchOutcome.type === "ai_failed") {
                 // AI failed - prompt user with error context
-                downloadUrl = yield* promptForDownloadUrl(
+                promptResult = yield* promptForDownloadUrl(
                   {
                     songName: song.songName,
                     artistName: song.artistName,
@@ -699,13 +721,16 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
                     yield* Effect.logInfo(
                       `AI matched: ${selectedTrack.name} by ${selectedTrack.artist}`,
                     );
-                    downloadUrl = selectedTrack.url;
+                    promptResult = {
+                      type: "url" as const,
+                      url: selectedTrack.url,
+                    };
                   } else {
                     // AI returned invalid index - prompt user
                     yield* Effect.logWarning(
                       `AI returned invalid index ${match.selectedIndex} for ${searchResults.length} results`,
                     );
-                    downloadUrl = yield* promptForDownloadUrl(
+                    promptResult = yield* promptForDownloadUrl(
                       {
                         songName: song.songName,
                         artistName: song.artistName,
@@ -720,7 +745,7 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
                   yield* Effect.logInfo(
                     "AI not confident, prompting for manual selection",
                   );
-                  downloadUrl = yield* promptForDownloadUrl(
+                  promptResult = yield* promptForDownloadUrl(
                     {
                       songName: song.songName,
                       artistName: song.artistName,
@@ -734,16 +759,27 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
             }
           }
 
-          // Update database only if we have a URL (skipped songs stay null)
-          if (downloadUrl) {
+          // Update database based on prompt result
+          if (promptResult?.type === "url") {
             yield* runQuery(async (db) => {
               await db
                 .update(schema.songs)
-                .set({ downloadUrl })
+                .set({ downloadUrl: promptResult.url, downloadable: true })
                 .where(eq(schema.songs.trackId, song.trackId))
                 .run();
             });
             yield* Effect.logInfo(`Saved download URL for: ${song.songName}`);
+          } else if (promptResult?.type === "not_downloadable") {
+            yield* runQuery(async (db) => {
+              await db
+                .update(schema.songs)
+                .set({ downloadable: false })
+                .where(eq(schema.songs.trackId, song.trackId))
+                .run();
+            });
+            yield* Effect.logInfo(
+              `Marked as non-downloadable: ${song.songName}`,
+            );
           } else {
             // Track skipped song to avoid re-fetching in this run
             skippedTrackIds.add(song.trackId);
@@ -784,6 +820,7 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
             and(
               isNotNull(schema.songs.downloadUrl),
               isNull(schema.songs.downloadedAt),
+              eq(schema.songs.downloadable, true),
             ),
           );
         return result[0] ?? { total: 0 };
@@ -818,6 +855,7 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
               and(
                 isNotNull(schema.songs.downloadUrl),
                 isNull(schema.songs.downloadedAt),
+                eq(schema.songs.downloadable, true),
               ),
             )
             .all();

@@ -50,6 +50,7 @@ export const songs = sqliteTable("songs", {
   }).notNull(),
   downloadUrl: text("download_url"), // Tidal track URL (e.g., https://tidal.com/browse/track/12345)
   downloadedAt: timestamp("downloaded_at"), // null = not downloaded yet
+  downloadable: integer("downloadable", { mode: "boolean" }), // null = unknown, true = available, false = not available
   createdAt: timestamp("created_at")
     .$default(() => new Date())
     .notNull(),
