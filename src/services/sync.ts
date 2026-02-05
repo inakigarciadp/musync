@@ -949,7 +949,7 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
         yield* runQuery(async (db) => {
           await db
             .update(schema.songs)
-            .set({ downloadedAt: new Date() })
+            .set({ downloadedAt: new Date(), filename })
             .where(eq(schema.songs.trackId, song.trackId))
             .run();
         });
