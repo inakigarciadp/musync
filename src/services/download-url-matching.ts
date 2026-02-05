@@ -61,6 +61,7 @@ Rules:
 - If multiple results match equally well, prefer the first one
 - Do not guess - only return an index if you are confident about the match
 - If the song name has "Live", and one of the results also has "Live", prefer that one.
+- If the song name does not have "Live" and you don't see a result that do not have "Live", return null to avoid mismatching live vs studio versions.
 - If uncertain, return null`,
             }),
           catch: (cause) =>
