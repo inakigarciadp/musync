@@ -555,6 +555,31 @@ export class LucidaService extends Effect.Service<LucidaService>()(
           `[DOWNLOAD] data.info type: ${data.info?.type}, data.info exists: ${!!data.info}`,
         );
 
+        // Detect rate-limited page data: when the server is rate-limiting, the SSR data
+        // embeds HTML error pages character-by-character as {"0":"<","1":"h",...} objects
+        // instead of proper track info. Token will also be null in this case.
+        const infoHasNumericKeys =
+          data.info &&
+          typeof data.info === "object" &&
+          "0" in data.info &&
+          "1" in data.info;
+        if (
+          infoHasNumericKeys ||
+          (data.token === null && data.tokenExpiry === null)
+        ) {
+          yield* Effect.logDebug(
+            `[DOWNLOAD] Detected rate-limited page data - info has numeric keys: ${!!infoHasNumericKeys}, token is null: ${data.token === null}`,
+          );
+          return yield* new LucidaDownloadError({
+            message:
+              "Server returned rate-limited page data (HTML embedded in SSR response)",
+            trackUrl: tidalUrl,
+            phase: "init",
+            isRetryable: true,
+            isRateLimit: true,
+          });
+        }
+
         // Handle both Info::Track format (type: "track") and nested track object
         const trackInfo =
           data.info?.type === "track"
@@ -575,7 +600,7 @@ export class LucidaService extends Effect.Service<LucidaService>()(
             message: "Missing required fields in page data",
             trackUrl: tidalUrl,
             phase: "init",
-            isRetryable: false,
+            isRetryable: true,
           });
         }
 
@@ -634,12 +659,13 @@ export class LucidaService extends Effect.Service<LucidaService>()(
             `[DOWNLOAD] /api/load response status: ${response.status}`,
           );
 
-          // biome-ignore lint/suspicious/noExplicitAny: JSON response has unknown structure
-          const body: any = yield* response.json.pipe(
+          // Read response as text first to detect HTML error pages
+          // The server sometimes returns HTML "404 Not Found" with status 200 when rate-limiting
+          const responseText = yield* response.text.pipe(
             Effect.mapError(
               (e) =>
                 new LucidaDownloadError({
-                  message: `Failed to parse download response: ${e.message}`,
+                  message: `Failed to read download response: ${e.message}`,
                   trackUrl: pageData.trackUrl,
                   phase: "init",
                   cause: e,
@@ -647,6 +673,38 @@ export class LucidaService extends Effect.Service<LucidaService>()(
                 }),
             ),
           );
+
+          // Detect HTML responses (rate-limiting returns nginx 404 page with status 200)
+          const trimmedResponse = responseText.trimStart();
+          if (
+            trimmedResponse.startsWith("<") ||
+            trimmedResponse.includes("<html>")
+          ) {
+            yield* Effect.logDebug(
+              `[DOWNLOAD] /api/load returned HTML instead of JSON (rate-limited): ${responseText.slice(0, 200)}`,
+            );
+            return yield* new LucidaDownloadError({
+              message:
+                "Server returned HTML instead of JSON (rate-limited by server)",
+              trackUrl: pageData.trackUrl,
+              phase: "init",
+              isRetryable: true,
+              isRateLimit: true,
+            });
+          }
+
+          // biome-ignore lint/suspicious/noExplicitAny: JSON response has unknown structure
+          const body: any = yield* Effect.try({
+            try: () => JSON.parse(responseText),
+            catch: (e) =>
+              new LucidaDownloadError({
+                message: `Failed to parse download response: ${e}`,
+                trackUrl: pageData.trackUrl,
+                phase: "init",
+                cause: e,
+                isRetryable: true,
+              }),
+          });
 
           yield* Effect.logDebug(
             `[DOWNLOAD] /api/load response body: ${JSON.stringify(body, null, 2)}`,
@@ -672,7 +730,8 @@ export class LucidaService extends Effect.Service<LucidaService>()(
               message: "Missing handoff or server in response",
               trackUrl: pageData.trackUrl,
               phase: "init",
-              isRetryable: false,
+              isRetryable: true,
+              isRateLimit: true,
             });
           }
 

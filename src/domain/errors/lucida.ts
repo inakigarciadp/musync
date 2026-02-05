@@ -36,6 +36,7 @@ export class LucidaDownloadError extends Schema.TaggedError<LucidaDownloadError>
     phase: Schema.String, // "init" | "poll" | "stream" | "save"
     cause: Schema.optional(Schema.Unknown),
     isRetryable: Schema.optional(Schema.Boolean),
+    isRateLimit: Schema.optional(Schema.Boolean),
   },
 ) {}
 

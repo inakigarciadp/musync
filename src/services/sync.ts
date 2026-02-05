@@ -1,8 +1,13 @@
 import { Prompt } from "@effect/cli";
 import { FileSystem, Terminal } from "@effect/platform";
 import { and, count, eq, isNotNull, isNull, ne, or } from "drizzle-orm";
-import { Console, Effect, Schedule, Stream } from "effect";
+import { Console, Duration, Effect, Ref, Schedule, Stream } from "effect";
 import type { DownloadUrlMatchingError } from "../domain/errors/download-url-matching";
+import type {
+  CloudflareChallengeError,
+  LucidaDownloadError,
+  LucidaDownloadTimeoutError,
+} from "../domain/errors/lucida";
 import type { SongExtractionError } from "../domain/errors/song-extraction";
 import { RateLimitExceededError, UrlParseError } from "../domain/errors/sync";
 import type { LucidaTrack } from "../domain/models/lucida";
@@ -818,9 +823,6 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
       const musicDir = yield* userConfig.getEffectiveMusicDir();
       yield* Effect.logInfo(`Music directory: ${musicDir}`);
 
-      // Constants for retry logic
-      const MAX_RETRIES = 3;
-
       // Get count of songs needing download
       const { total } = yield* runQuery(async (db) => {
         const result = await db
@@ -885,22 +887,77 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
           `Downloading: ${song.artistName ?? "Unknown"} - ${song.songName ?? "Unknown"}`,
         );
 
-        // Download with retry logic
-        // Errors are caught and logged here - only CloudflareChallengeError bubbles up
+        // Download with dual retry strategy:
+        // - General retryable errors: 2s exponential backoff, 3 retries (2s, 4s, 8s)
+        // - Rate-limit errors: 60s exponential backoff, 5 retries (60s, 120s, 240s, 480s, 960s)
+        // Uses Ref to track per-type retry counts and Schedule.identity to access the error
+        const GENERAL_MAX_RETRIES = 3;
+        const RATE_LIMIT_MAX_RETRIES = 5;
+        const generalRetries = yield* Ref.make(0);
+        const rateLimitRetries = yield* Ref.make(0);
+
+        const downloadSchedule = Schedule.identity<
+          | LucidaDownloadError
+          | LucidaDownloadTimeoutError
+          | CloudflareChallengeError
+        >().pipe(
+          // Conditionally stop based on per-type retry count
+          Schedule.checkEffect((error) =>
+            Effect.gen(function* () {
+              // Never retry CloudflareChallengeError
+              if (error._tag === "CloudflareChallengeError") return false;
+              // Never retry non-retryable LucidaDownloadError
+              if (error._tag === "LucidaDownloadError" && !error.isRetryable)
+                return false;
+
+              const isRateLimit =
+                error._tag === "LucidaDownloadError" &&
+                error.isRateLimit === true;
+              if (isRateLimit) {
+                const count = yield* Ref.get(rateLimitRetries);
+                return count < RATE_LIMIT_MAX_RETRIES;
+              }
+              const count = yield* Ref.get(generalRetries);
+              return count < GENERAL_MAX_RETRIES;
+            }),
+          ),
+          // Compute delay based on error type and increment per-type retry count
+          Schedule.modifyDelayEffect((error, _baseDelay) =>
+            Effect.gen(function* () {
+              const isRateLimit =
+                error._tag === "LucidaDownloadError" &&
+                error.isRateLimit === true;
+              if (isRateLimit) {
+                const count = yield* Ref.getAndUpdate(
+                  rateLimitRetries,
+                  (n) => n + 1,
+                );
+                const delay = Duration.seconds(60 * 2 ** count);
+                yield* Effect.logWarning(
+                  `Rate-limited by server, waiting ${Duration.toSeconds(delay)}s before retry ${count + 1}/${RATE_LIMIT_MAX_RETRIES}...`,
+                );
+                return delay;
+              }
+              const count = yield* Ref.getAndUpdate(
+                generalRetries,
+                (n) => n + 1,
+              );
+              return Duration.seconds(2 * 2 ** count);
+            }),
+          ),
+        );
+
         const downloadEffect = lucida.download(song.downloadUrl).pipe(
           Effect.tapError((e) =>
-            Effect.logWarning(`Download attempt failed: ${e.message}`),
-          ),
-          Effect.retry({
-            schedule: Schedule.exponential("2 seconds").pipe(
-              Schedule.intersect(Schedule.recurs(MAX_RETRIES)),
+            Effect.logWarning(
+              `Download attempt failed: ${e.message}${
+                e._tag === "LucidaDownloadError" && e.isRateLimit
+                  ? " (rate-limited)"
+                  : ""
+              }`,
             ),
-            while: (e) =>
-              e._tag !== "CloudflareChallengeError" &&
-              (e._tag === "LucidaDownloadError"
-                ? e.isRetryable === true
-                : true),
-          }),
+          ),
+          Effect.retry(downloadSchedule),
         );
 
         const downloadResult = yield* downloadEffect.pipe(
