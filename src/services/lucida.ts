@@ -441,6 +441,20 @@ export class LucidaService extends Effect.Service<LucidaService>()(
           });
         }
 
+        // Detect HTTP 404 rate-limiting: server returns nginx 404 page when overloaded
+        if (response.status === 404) {
+          yield* Effect.logDebug(
+            "[DOWNLOAD] Got HTTP 404 - treating as rate-limit (server overloaded)",
+          );
+          return yield* new LucidaDownloadError({
+            message: "Server returned HTTP 404 (rate-limited by server)",
+            trackUrl: tidalUrl,
+            phase: "init",
+            isRetryable: true,
+            isRateLimit: true,
+          });
+        }
+
         // Extract JSON data between markers (same approach as lucidaDownloader)
         // Markers: `,{"type":"data","data":` ... `,"uses":{"url":1}}];`
         const startMarker = ',{"type":"data","data":';
