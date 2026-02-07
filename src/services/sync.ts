@@ -902,8 +902,8 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
           | CloudflareChallengeError
         >().pipe(
           // Conditionally stop based on per-type retry count
-          Schedule.checkEffect((error) =>
-            Effect.gen(function* () {
+          Schedule.checkEffect(
+            Effect.fnUntraced(function* (error) {
               // Never retry CloudflareChallengeError
               if (error._tag === "CloudflareChallengeError") return false;
               // Never retry non-retryable LucidaDownloadError
@@ -922,8 +922,8 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
             }),
           ),
           // Compute delay based on error type and increment per-type retry count
-          Schedule.modifyDelayEffect((error, _baseDelay) =>
-            Effect.gen(function* () {
+          Schedule.modifyDelayEffect(
+            Effect.fnUntraced(function* (error, _baseDelay) {
               const isRateLimit =
                 error._tag === "LucidaDownloadError" &&
                 error.isRateLimit === true;
