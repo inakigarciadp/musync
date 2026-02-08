@@ -582,6 +582,8 @@ export class LucidaService extends Effect.Service<LucidaService>()(
         );
 
         // Parse the JSON using Effect.try
+        // JSON parse failures are retryable because Lucida sometimes returns
+        // transient non-data responses (e.g. void/error pages) that resolve on retry
         // biome-ignore lint/suspicious/noExplicitAny: JSON parsing returns unknown structure
         const data: any = yield* Effect.try({
           try: () => JSON.parse(jsonStr),
@@ -591,7 +593,7 @@ export class LucidaService extends Effect.Service<LucidaService>()(
               trackUrl: tidalUrl,
               phase: "init",
               cause: e,
-              isRetryable: false,
+              isRetryable: true,
             }),
         }).pipe(
           Effect.tap(() =>
