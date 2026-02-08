@@ -1,7 +1,7 @@
 import { Prompt } from "@effect/cli";
 import { FileSystem, Terminal } from "@effect/platform";
 import { and, count, eq, isNotNull, isNull, ne, or } from "drizzle-orm";
-import { Console, Effect, Schedule, Stream } from "effect";
+import { Console, Effect, Ref, Schedule, Stream } from "effect";
 import type { DownloadUrlMatchingError } from "../domain/errors/download-url-matching";
 import type {
   CloudflareChallengeError,
@@ -916,15 +916,32 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
           ),
         ).pipe(Schedule.intersect(Schedule.recurs(MAX_DOWNLOAD_RETRIES)));
 
+        const downloadAttempt = yield* Ref.make(0);
+
         const downloadEffect = lucida.download(song.downloadUrl).pipe(
-          Effect.tapError((e) =>
-            Effect.logWarning(
-              `Download attempt failed: ${e.message}${
-                e._tag === "LucidaDownloadError" && e.isRateLimit
-                  ? " (rate-limited)"
-                  : ""
-              }`,
-            ),
+          Effect.tapError(
+            Effect.fnUntraced(function* (e) {
+              const attempt = yield* Ref.getAndUpdate(
+                downloadAttempt,
+                (n) => n + 1,
+              );
+              const willRetry =
+                attempt < MAX_DOWNLOAD_RETRIES &&
+                (isRateLimit(e) || isRetryableGeneral(e));
+
+              if (isRateLimit(e)) {
+                const delay = 60 * 2 ** attempt;
+                yield* Effect.logWarning(
+                  willRetry
+                    ? `Download attempt failed: ${e.message} (rate-limited). Waiting ${delay}s before retry ${attempt + 1}/${MAX_DOWNLOAD_RETRIES}...`
+                    : `Download attempt failed: ${e.message} (rate-limited)`,
+                );
+              } else {
+                yield* Effect.logWarning(
+                  `Download attempt failed: ${e.message}`,
+                );
+              }
+            }),
           ),
           Effect.retry(downloadSchedule),
         );
