@@ -28,6 +28,60 @@ interface DownloadStatus {
 }
 
 /**
+ * Converts a JavaScript object literal string to valid JSON by quoting
+ * unquoted keys, while respecting string boundaries.
+ *
+ * The naive regex approach (`rawStr.replace(/([{,]\s*)(\w+)\s*:/g, ...)`)
+ * corrupts string values that contain patterns resembling JS keys (e.g.
+ * a copyright field with `"S.A."` getting mangled into `"S":A."`).
+ *
+ * This function iterates character-by-character, tracks whether it's inside
+ * a quoted string (handling `\"` escapes), and only quotes keys when outside
+ * string literals.
+ */
+function jsObjectToJson(raw: string): string {
+  let result = "";
+  let inString = false;
+  let i = 0;
+
+  while (i < raw.length) {
+    if (inString) {
+      const ch = raw[i] as string;
+      if (ch === "\\" && i + 1 < raw.length) {
+        // Preserve escape sequences (e.g. \", \\, \n)
+        result += ch + (raw[i + 1] as string);
+        i += 2;
+      } else if (ch === '"') {
+        result += '"';
+        inString = false;
+        i++;
+      } else {
+        result += ch;
+        i++;
+      }
+    } else {
+      const ch = raw[i] as string;
+      if (ch === '"') {
+        result += '"';
+        inString = true;
+        i++;
+      } else {
+        // Outside a string: check for unquoted key at current position
+        const keyMatch = raw.slice(i).match(/^(\w+)\s*:/);
+        if (keyMatch) {
+          result += `"${keyMatch[1]}":`;
+          i += keyMatch[0].length;
+        } else {
+          result += ch;
+          i++;
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/**
  * HTML parsing for lucida.to search results.
  *
  * Expected HTML structure:
@@ -519,9 +573,9 @@ export class LucidaService extends Effect.Service<LucidaService>()(
         // Convert JavaScript object literal notation to valid JSON
         // SvelteKit embeds data as JS objects with unquoted keys: {key: value}
         // We need to quote the keys to make it valid JSON: {"key": value}
-        // This regex matches unquoted keys (word characters followed by colon)
-        // but only when they appear after { or , (not inside strings)
-        const jsonStr = rawStr.replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":');
+        // Uses a string-boundary-aware parser instead of a naive regex to avoid
+        // corrupting string values that contain key-like patterns (e.g. "S.A.")
+        const jsonStr = jsObjectToJson(rawStr);
 
         yield* Effect.logDebug(
           `[DOWNLOAD] Converted to JSON (first 500 chars): ${jsonStr.slice(0, 500)}`,
