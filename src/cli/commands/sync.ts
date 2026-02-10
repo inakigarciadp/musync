@@ -35,6 +35,9 @@ export const syncCommand = Command.make(
     // Step 5: Download songs
     yield* syncService.downloadSongs();
 
+    // Step 6: Generate M3U8 playlist files
+    yield* syncService.generatePlaylists();
+
     yield* Effect.logInfo("Sync process completed");
   }),
 ).pipe(Command.withDescription("Fetch metadata and download new tracks"));

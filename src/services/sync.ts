@@ -16,6 +16,7 @@ import { truncate } from "../presentation/formatters/utils";
 import { DatabaseService } from "./database";
 import { DownloadUrlMatchingService } from "./download-url-matching";
 import { LucidaService } from "./lucida";
+import { M3UService } from "./m3u8";
 import { SongExtractionService } from "./song-extraction";
 import { UserConfigService } from "./user-config";
 import { YouTubeService } from "./youtube";
@@ -41,6 +42,7 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
     LucidaService.Default,
     DownloadUrlMatchingService.Default,
     UserConfigService.Default,
+    M3UService.Default,
   ],
   effect: Effect.gen(function* () {
     const dbService = yield* DatabaseService;
@@ -48,6 +50,7 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
     const songExtraction = yield* SongExtractionService;
     const lucida = yield* LucidaService;
     const downloadMatching = yield* DownloadUrlMatchingService;
+    const m3u = yield* M3UService;
     const userConfig = yield* UserConfigService;
     const fs = yield* FileSystem.FileSystem;
 
@@ -1016,12 +1019,16 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
       );
     });
 
+    /** Step 6: Generate M3U8 playlist files */
+    const generatePlaylists = m3u.generatePlaylists;
+
     return {
       syncPlaylistsToDb,
       extractSongsWithAi,
       handleManualReview,
       findDownloadUrls,
       downloadSongs,
+      generatePlaylists,
     };
   }),
 }) {}
