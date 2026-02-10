@@ -10,6 +10,7 @@ import { ConfigService } from "../services/config";
 import { DatabaseService } from "../services/database";
 import { DownloadUrlMatchingService } from "../services/download-url-matching";
 import { LucidaService } from "../services/lucida";
+import { M3UService } from "../services/m3u8";
 import { PathsService } from "../services/paths";
 import { SongExtractionService } from "../services/song-extraction";
 import { SyncService } from "../services/sync";
@@ -98,6 +99,12 @@ const youtubeServiceLayer = YouTubeService.Default.pipe(
   Layer.provide(youtubeHttpClientLayer),
 );
 
+// M3U8 playlist generation service
+const m3uServiceLayer = M3UService.Default.pipe(
+  Layer.provide(databaseServiceLayer),
+  Layer.provide(userConfigServiceLayer),
+);
+
 // SyncService depends on multiple services
 const syncServiceLayer = SyncService.Default.pipe(
   Layer.provide(databaseServiceLayer),
@@ -106,6 +113,7 @@ const syncServiceLayer = SyncService.Default.pipe(
   Layer.provide(lucidaServiceLayer),
   Layer.provide(downloadUrlMatchingServiceLayer),
   Layer.provide(userConfigServiceLayer),
+  Layer.provide(m3uServiceLayer),
 );
 
 // Infrastructure layers - provided at the bottom to close all leaked dependencies
@@ -125,4 +133,5 @@ export const AppLayer = Layer.mergeAll(
   cloudflareCredentialsServiceLayer,
   userConfigServiceLayer,
   pathsServiceLayer,
+  m3uServiceLayer,
 ).pipe(Layer.provide(infrastructureLayer));
