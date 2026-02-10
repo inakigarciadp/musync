@@ -78,9 +78,25 @@ export class SyncService extends Effect.Service<SyncService>()("SyncService", {
             );
 
             for (const playlist of trackedPlaylists) {
-              yield* Effect.logInfo(`Syncing playlist: ${playlist.id}`);
+              // 3. Fetch playlist metadata (name) from the API
+              const playlistMeta = yield* youtube.getPlaylist(
+                playlist.id as PlaylistId,
+              );
 
-              // 3. For each playlist, fetch its tracks from the API
+              // Update playlist name in the database
+              yield* runQuery(async (db) => {
+                await db
+                  .update(schema.playlists)
+                  .set({ name: playlistMeta.snippet.title })
+                  .where(eq(schema.playlists.id, playlist.id))
+                  .run();
+              });
+
+              yield* Effect.logInfo(
+                `Syncing playlist: ${playlistMeta.snippet.title} (${playlist.id})`,
+              );
+
+              // 4. Fetch tracks from the API
               const trackResponse = yield* youtube.listAllPlaylistItems(
                 playlist.id as PlaylistId,
               );
