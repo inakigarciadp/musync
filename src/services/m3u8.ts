@@ -2,9 +2,20 @@ import { FileSystem } from "@effect/platform";
 import { and, asc, eq, isNotNull } from "drizzle-orm";
 import { Effect } from "effect";
 import { FileSystemError } from "../domain/errors/auth";
+import { DuplicatePlaylistNameError } from "../domain/errors/sync";
 import { DatabaseService } from "./database";
 import { getFlacDuration } from "./flac-duration";
 import { UserConfigService } from "./user-config";
+
+/**
+ * Sanitize a playlist name for use as a filename.
+ * Replaces filesystem-unsafe characters with underscores and trims whitespace.
+ */
+const sanitizeFilename = (name: string): string =>
+  name
+    .replace(/[/\\:*?"<>|]/g, "_")
+    .replace(/\s+/g, " ")
+    .trim();
 
 export class M3UService extends Effect.Service<M3UService>()("M3UService", {
   accessors: true,
@@ -20,7 +31,7 @@ export class M3UService extends Effect.Service<M3UService>()("M3UService", {
      * For each tracked playlist:
      * 1. Query downloaded tracks ordered by YouTube position
      * 2. Probe each FLAC file for duration
-     * 3. Write the .m3u8 file to <musicDir>/playlists/<playlistId>.m3u8
+     * 3. Write the .m3u8 file to <musicDir>/playlists/<playlist name>.m3u8
      *
      * Also cleans up orphaned .m3u8 files for playlists no longer tracked.
      */
@@ -41,10 +52,10 @@ export class M3UService extends Effect.Service<M3UService>()("M3UService", {
           ),
         );
 
-        // Get all tracked playlist IDs
+        // Get all tracked playlists with names
         const trackedPlaylists = yield* runQuery(async (db) => {
           return await db
-            .select({ id: schema.playlists.id })
+            .select({ id: schema.playlists.id, name: schema.playlists.name })
             .from(schema.playlists)
             .all();
         });
@@ -53,12 +64,41 @@ export class M3UService extends Effect.Service<M3UService>()("M3UService", {
           `Generating M3U8 playlists for ${trackedPlaylists.length} tracked playlists`,
         );
 
-        const trackedIds = trackedPlaylists.map((p) => p.id);
+        // Build filename mapping and check for duplicates
+        const filenameToIds = new Map<string, string[]>();
+        const playlistFilenames = new Map<string, string>();
+
+        for (const playlist of trackedPlaylists) {
+          // name is guaranteed non-null after the validation above
+          const sanitized = sanitizeFilename(playlist.name as string);
+          const existing = filenameToIds.get(sanitized) ?? [];
+          existing.push(playlist.id);
+          filenameToIds.set(sanitized, existing);
+          playlistFilenames.set(playlist.id, sanitized);
+        }
+
+        // Check for duplicate sanitized names
+        for (const [name, ids] of filenameToIds) {
+          if (ids.length > 1) {
+            return yield* DuplicatePlaylistNameError.make({
+              message: `Multiple playlists would produce the same filename "${name}.m3u8": ${ids.join(", ")}`,
+              duplicateName: name,
+              playlistIds: ids,
+            });
+          }
+        }
+
+        // Collect expected filenames for orphan cleanup
+        const expectedFilenames = new Set(
+          [...playlistFilenames.values()].map((name) => `${name}.m3u8`),
+        );
 
         // Generate each playlist file
         for (const playlist of trackedPlaylists) {
+          const filename = playlistFilenames.get(playlist.id) as string;
           yield* generatePlaylistFile(
             playlist.id,
+            filename,
             musicDir,
             playlistsDir,
             schema,
@@ -67,7 +107,7 @@ export class M3UService extends Effect.Service<M3UService>()("M3UService", {
         }
 
         // Clean up orphaned .m3u8 files
-        yield* cleanupOrphanedFiles(playlistsDir, trackedIds);
+        yield* cleanupOrphanedFiles(playlistsDir, expectedFilenames);
 
         yield* Effect.logInfo("M3U8 playlist generation completed");
       },
@@ -79,6 +119,7 @@ export class M3UService extends Effect.Service<M3UService>()("M3UService", {
     const generatePlaylistFile = Effect.fn("M3UService.generatePlaylistFile")(
       function* (
         playlistId: string,
+        playlistFilename: string,
         musicDir: string,
         playlistsDir: string,
         schema: typeof dbService.schema,
@@ -111,7 +152,7 @@ export class M3UService extends Effect.Service<M3UService>()("M3UService", {
 
         if (tracks.length === 0) {
           yield* Effect.logDebug(
-            `Playlist ${playlistId}: no downloaded tracks, skipping`,
+            `Playlist ${playlistFilename}: no downloaded tracks, skipping`,
           );
           return;
         }
@@ -143,7 +184,7 @@ export class M3UService extends Effect.Service<M3UService>()("M3UService", {
 
         // Write the file (LF line endings, no BOM)
         const content = `${lines.join("\n")}\n`;
-        const filePath = `${playlistsDir}/${playlistId}.m3u8`;
+        const filePath = `${playlistsDir}/${playlistFilename}.m3u8`;
 
         yield* fs.writeFileString(filePath, content).pipe(
           Effect.mapError((e) =>
@@ -162,21 +203,18 @@ export class M3UService extends Effect.Service<M3UService>()("M3UService", {
 
     /**
      * Delete .m3u8 files in the playlists directory that don't match
-     * any tracked playlist ID.
+     * any expected playlist filename.
      */
     const cleanupOrphanedFiles = Effect.fn("M3UService.cleanupOrphanedFiles")(
-      function* (playlistsDir: string, trackedIds: string[]) {
+      function* (playlistsDir: string, expectedFilenames: Set<string>) {
         const entries = yield* fs
           .readDirectory(playlistsDir)
           .pipe(Effect.catchAll(() => Effect.succeed([] as string[])));
 
-        const trackedSet = new Set(trackedIds);
-
         for (const entry of entries) {
           if (!entry.endsWith(".m3u8")) continue;
 
-          const stem = entry.slice(0, -5); // Remove ".m3u8"
-          if (!trackedSet.has(stem)) {
+          if (!expectedFilenames.has(entry)) {
             const filePath = `${playlistsDir}/${entry}`;
             yield* fs.remove(filePath).pipe(
               Effect.tap(() =>
