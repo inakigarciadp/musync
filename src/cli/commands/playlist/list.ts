@@ -25,8 +25,11 @@ export const listPlaylistsCommand = Command.make(
 
     yield* Console.log("Tracked Playlists:");
     for (const playlist of playlists) {
+      const label = playlist.name
+        ? `${playlist.name} (${playlist.id})`
+        : playlist.id;
       yield* Console.log(
-        `- ${playlist.id} (added on: ${playlist.createdAt.toISOString()})`,
+        `- ${label} (added on: ${playlist.createdAt.toISOString()})`,
       );
     }
   }),
