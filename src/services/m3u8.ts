@@ -33,7 +33,7 @@ export class M3UService extends Effect.Service<M3UService>()("M3UService", {
      * 2. Probe each FLAC file for duration
      * 3. Write the .m3u8 file to <musicDir>/playlists/<playlist name>.m3u8
      *
-     * Also cleans up orphaned .m3u8 files for playlists no longer tracked.
+     * All existing .m3u8 files are deleted before generation.
      */
     const generatePlaylists = Effect.fn("M3UService.generatePlaylists")(
       function* () {
@@ -88,10 +88,8 @@ export class M3UService extends Effect.Service<M3UService>()("M3UService", {
           }
         }
 
-        // Collect expected filenames for orphan cleanup
-        const expectedFilenames = new Set(
-          [...playlistFilenames.values()].map((name) => `${name}.m3u8`),
-        );
+        // Delete all existing .m3u8 files before regenerating
+        yield* clearPlaylistFiles(playlistsDir);
 
         // Generate each playlist file
         for (const playlist of trackedPlaylists) {
@@ -105,9 +103,6 @@ export class M3UService extends Effect.Service<M3UService>()("M3UService", {
             runQuery,
           );
         }
-
-        // Clean up orphaned .m3u8 files
-        yield* cleanupOrphanedFiles(playlistsDir, expectedFilenames);
 
         yield* Effect.logInfo("M3U8 playlist generation completed");
       },
@@ -202,11 +197,10 @@ export class M3UService extends Effect.Service<M3UService>()("M3UService", {
     );
 
     /**
-     * Delete .m3u8 files in the playlists directory that don't match
-     * any expected playlist filename.
+     * Delete all .m3u8 files in the playlists directory.
      */
-    const cleanupOrphanedFiles = Effect.fn("M3UService.cleanupOrphanedFiles")(
-      function* (playlistsDir: string, expectedFilenames: Set<string>) {
+    const clearPlaylistFiles = Effect.fn("M3UService.clearPlaylistFiles")(
+      function* (playlistsDir: string) {
         const entries = yield* fs
           .readDirectory(playlistsDir)
           .pipe(Effect.catchAll(() => Effect.succeed([] as string[])));
@@ -214,19 +208,13 @@ export class M3UService extends Effect.Service<M3UService>()("M3UService", {
         for (const entry of entries) {
           if (!entry.endsWith(".m3u8")) continue;
 
-          if (!expectedFilenames.has(entry)) {
-            const filePath = `${playlistsDir}/${entry}`;
-            yield* fs.remove(filePath).pipe(
-              Effect.tap(() =>
-                Effect.logInfo(`Deleted orphaned playlist file: ${entry}`),
-              ),
+          yield* fs
+            .remove(`${playlistsDir}/${entry}`)
+            .pipe(
               Effect.catchAll((e) =>
-                Effect.logWarning(
-                  `Failed to delete orphaned file ${entry}: ${e}`,
-                ),
+                Effect.logWarning(`Failed to delete ${entry}: ${e}`),
               ),
             );
-          }
         }
       },
     );
