@@ -2,21 +2,11 @@
 - `bun typecheck` for running TS type checking.
 - `bun check` for running the linter.
 
-# Developer guide
-
-There is no build command in this project. Just run `bun index.ts <command>`. This project uses bun for everything. It also uses the Effect TS library for composable runtime effects.
-
-If you need to learn about the Youtube API, search for links in the official [Youtube Data API v3](https://developers.google.com/youtube/v3/docs) documentation.
-
-Use kebab-case for TypeScript files.
-
-If you run into an error loop, look at existing patterns and implementations to see how are we doing things. If that does not work, use the btca subagent to ask for help.
-
 ## btca
 
 When you need up-to-date information about technologies used in this project, use btca to query source repositories directly.
 
-**Available resources**: effect, lucidaDownloader
+**Available resources**: effect
 
 ### Usage
 
@@ -26,31 +16,24 @@ btca ask -t <resource> -q "<question>"
 
 ## Error Handling System
 
-The application uses a centralized, type-safe error handling system with Effect:
+Type-safe error handling with Effect. Errors are defined as `Schema.TaggedError` classes, collected into an `AppError` union (`src/domain/errors/index.ts`), and formatted via an exhaustive `Match.typeTags<AppError>()` matcher (`src/presentation/error-presentation.ts`). Adding a new error to the union causes a compile error until you handle it in the matcher.
 
-### Key Concepts
+### How errors flow
 
-1. **AppError Union** (`src/domain/errors/index.ts`): All error types are combined into a single union type. This includes auth errors, YouTube errors, HTTP errors, CLI validation errors, and config errors.
+1. **Bubble up by default**: Commands don't catch errors. Unhandled errors reach `index.ts` where `handleCliError` formats them and exits with the right code.
+2. **Retry at the call site**: Some operations retry transient failures before letting errors propagate. For example, the sync service (`src/services/sync.ts`) retries SongExtractionError, LucidaSearchError, DownloadUrlMatchingError, and LucidaDownloadError with exponential backoff and limits. CloudflareChallengeError is never retried - it indicates a blocker that requires user intervention.
+3. **Graceful degradation**: After retries exhaust, some errors (search, AI matching, download) are caught and converted into user prompts or skip outcomes rather than failing the entire sync.
 
-2. **Exhaustive Matching** (`src/presentation/error-presentation.ts`): Uses `Match.typeTags<AppError>()` for compile-time exhaustiveness checking. If you add a new error to the union, the compiler will force you to handle it.
+### Adding a new error
 
-3. **No Per-Command Error Handling**: Commands should not catch errors. Let them bubble up to the entry point where the centralized handler formats them for users.
+1. Define it in its domain file (e.g., `src/domain/errors/youtube.ts`).
+2. Add it to `AppError` in `src/domain/errors/index.ts`.
+3. Handle it in `src/presentation/error-presentation.ts` (compiler enforces this).
 
-4. **Exit Codes**: Use `CliExitError` class to carry exit codes through Effect's type system. The `cliTeardown` function extracts these codes for proper process exit.
-
-5. **Debug Mode**: Set `DEBUG=1` environment variable to show stack traces with `Cause.pretty()`.
-
-### When Adding New Errors
-
-1. Define the error in its domain file (e.g., `src/domain/errors/youtube.ts`).
-2. Add it to the `AppError` union in `src/domain/errors/index.ts`.
-3. Add a handler case in `src/presentation/error-presentation.ts` (compiler will enforce this).
-4. Assign an appropriate exit code from the established convention.
-
-### Exit Code Convention
+### Exit codes
 
 | Code | Meaning |
-|-------|---------|
+|------|---------|
 | 0 | Success |
 | 1 | General error |
 | 2 | Authentication required |
@@ -58,13 +41,17 @@ The application uses a centralized, type-safe error handling system with Effect:
 | 5 | Rate limit exceeded |
 | 6 | Service unavailable |
 | 7 | Not implemented |
+| 8 | Cloudflare challenge required |
+| 130 | User interrupt (Ctrl+C) |
+
+`DEBUG=1` shows stack traces.
 
 ## Architecture overview
 
-This is the initial proposed project structure. It may evolve over time or depending on the specific needs. Try to follow it but don't be afraid to adapt as necessary.
+Current project structure. Follow this layout but adapt as necessary.
 
 ```
-index.ts # Entry point
+index.ts                             # Entry point
 src/
 ├── cli/
 │   ├── commands/
@@ -73,91 +60,89 @@ src/
 │   │   │   ├── logout.ts
 │   │   │   ├── status.ts
 │   │   │   └── refresh.ts
+│   │   ├── cloudflare/
+│   │   │   └── set.ts
 │   │   ├── config/
 │   │   │   ├── set.ts
 │   │   │   ├── show.ts
 │   │   │   └── reset.ts
 │   │   ├── maintenance/
-│   │   │   ├── verify.ts
 │   │   │   ├── clean.ts
-│   │   │   ├── orphans.ts
 │   │   │   ├── duplicates.ts
+│   │   │   ├── orphans.ts
+│   │   │   ├── refetch.ts
 │   │   │   ├── validate.ts
-│   │   │   └── refetch.ts
+│   │   │   └── verify.ts
 │   │   ├── playlist/
 │   │   │   ├── add.ts
-│   │   │   ├── remove.ts
-│   │   │   └── list.ts
+│   │   │   ├── list.ts
+│   │   │   └── remove.ts
 │   │   ├── init.ts
-│   │   ├── sync.ts
 │   │   ├── playlists.ts
-│   │   ├── tracks.ts
-│   │   └── status.ts
+│   │   ├── status.ts
+│   │   ├── sync.ts
+│   │   └── tracks.ts
 │   └── index.ts
-├── presentation/
-│   ├── error-presentation.ts    # Centralized error formatting and exit codes
-│   └── formatters/
-│       ├── index.ts
-│       ├── table.ts
-│       ├── json.ts
-│       ├── compact.ts
-│       └── utils.ts
-├── services/
-│   ├── auth.ts                    # OAuth token management
-│   ├── config.ts                  # User preferences
-│   ├── youtube.ts                 # YouTube API wrapper
-│   ├── database.ts                # SQLite operations
-│   ├── download.ts                # Coordinates downloading
-│   ├── file-system.ts             # File operations
-│   ├── m3u8.ts                    # Playlist file generation
-│   └── metadata.ts                # FLAC tagging
+├── domain/
+│   ├── errors/
+│   │   ├── index.ts                 # AppError union type (all error types)
+│   │   ├── auth.ts
+│   │   ├── config.ts
+│   │   ├── database.ts
+│   │   ├── download-url-matching.ts
+│   │   ├── interactive.ts
+│   │   ├── lucida.ts
+│   │   ├── song-extraction.ts
+│   │   ├── sync.ts
+│   │   └── youtube.ts
+│   └── models/
+│       ├── auth.ts
+│       ├── cloudflare.ts
+│       ├── db/
+│       │   ├── playlist.ts
+│       │   └── utils.ts
+│       ├── download-url-match.ts
+│       ├── format.ts
+│       ├── lucida.ts
+│       ├── song.ts
+│       ├── user-config.ts
+│       └── youtube/
+│           ├── playlist.ts
+│           └── tracks.ts
 ├── http/
 │   └── layers/
-│       ├── oauth-http.ts         # For OAuth flow (Google OAuth endpoints)
-│       ├── youtube-api-http.ts    # For YouTube Data API v3
-│       └── download-client.ts      # For yt-dlp or download service
-├── domain/
-│   ├── models/
-│   │   ├── auth.ts
-│   │   ├── format.ts
-│   │   ├── config.ts
-│   │   ├── track.ts
-│   │   ├── playlist.ts
-│   │   └── youtube/
-│   │       ├── playlist.ts
-│   │       └── tracks.ts
-│   └── errors/
-│       ├── index.ts                 # AppError union type (all error types)
-│       ├── auth.ts
-│       ├── youtube.ts
-│       ├── database.ts
-│       ├── download.ts
-│       ├── file-system.ts
-│       └── cli.ts
+│       ├── lucida-http.ts           # For Lucida download service
+│       ├── oauth-http.ts            # For OAuth flow (Google OAuth endpoints)
+│       └── youtube-api-http.ts      # For YouTube Data API v3
 ├── infrastructure/
 │   ├── db/
-│   │   ├── schema.sql
-│   │   ├── migrations/
-│   │   │   └── 001_initial.sql
-│   │   └── queries.ts
-│   ├── paths/
-│   │   └── xdg.ts                 # XDG directory handling
+│   │   └── schema.ts               # Database schema definition
 │   └── oauth/
-│       ├── browser.ts             # Browser for OAuth flow
-│       ├── callback-server.ts     # OAuth callback server
-│       ├── pkce.ts                # PKCE challenge generation
-│       └── flow.ts                # OAuth authorization flow
-└── layers/
-    └── index.ts                   # Layer composition
+│       ├── browser.ts              # Browser for OAuth flow
+│       ├── callback-server.ts      # OAuth callback server
+│       └── pkce.ts                 # PKCE challenge generation
+├── layers/
+│   └── index.ts                     # Layer composition
+├── presentation/
+│   ├── error-presentation.ts        # Centralized error formatting and exit codes
+│   └── formatters/
+│       ├── index.ts
+│       ├── compact.ts
+│       ├── json.ts
+│       ├── table.ts
+│       └── utils.ts
+└── services/
+    ├── auth.ts                      # OAuth token management
+    ├── cloudflare-credentials.ts    # Cloudflare credentials management
+    ├── config.ts                    # App configuration
+    ├── database.ts                  # SQLite operations
+    ├── download-url-matching.ts     # Download URL matching logic
+    ├── flac-duration.ts             # FLAC duration extraction
+    ├── lucida.ts                    # Lucida download service
+    ├── m3u8.ts                      # Playlist file generation
+    ├── paths.ts                     # File path management
+    ├── song-extraction.ts           # Song metadata extraction
+    ├── sync.ts                      # Playlist sync orchestration
+    ├── user-config.ts               # User preferences
+    └── youtube.ts                   # YouTube API wrapper
 ```
-
-## Implementation status
-
-- `auth login` - OAuth2 PKCE flow with Youtube API v3. Automatic token refresh when token expires within 5 minutes.
-- `auth logout` - Removes stored authentication tokens.
-- `auth refresh` - Manually force refresh the access token.
-- `auth status` - Shows authentication state and token expiry.
-- `playlists` - Lists the playlists associated to the auth'd user. Supports pagination via `--page-token`, limits via `--limit` (1-50, default 20), output formatting via `--format` (json|table|compact), and `--all` flag to fetch all playlists ignoring pagination. The `--tracked` flag is not implemented yet.
-- `tracks` - Lists tracks from a YouTube playlist. Requires `playlist-id` argument. Supports pagination via `--page-token`, limits via `--limit` (1-50, default 20), output formatting via `--format` (json|table|compact), and `--all` flag to fetch all tracks ignoring pagination. The `--downloaded` and `--missing` flags are not implemented yet.
-- `playlist (add|remove|list)` - Integrates with the database service to add, remove, and list tracked playlists. The current database schema only saves the playlist ID and the creation date.
-- All other commands - stubs
