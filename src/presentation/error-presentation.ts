@@ -207,6 +207,12 @@ const formatError: (error: AppError) => FormattedError =
       suggestion: `Could not parse URL: ${e.url}`,
       exitCode: 1,
     }),
+    DuplicatePlaylistNameError: (e) => ({
+      title: "Duplicate playlist name",
+      message: e.message,
+      suggestion: `Rename one of the playlists on YouTube to have a unique name, then run 'musync sync'.`,
+      exitCode: 1,
+    }),
 
     // General errors
     NotImplementedError: (e) => ({

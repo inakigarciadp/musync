@@ -23,3 +23,16 @@ export class UrlParseError extends Schema.TaggedError<UrlParseError>()(
     url: Schema.String,
   },
 ) {}
+
+/**
+ * Error thrown when two or more playlists would produce the same
+ * sanitized filename for M3U8 generation.
+ */
+export class DuplicatePlaylistNameError extends Schema.TaggedError<DuplicatePlaylistNameError>()(
+  "DuplicatePlaylistNameError",
+  {
+    message: Schema.String,
+    duplicateName: Schema.String,
+    playlistIds: Schema.Array(Schema.String),
+  },
+) {}
