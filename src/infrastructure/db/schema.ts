@@ -9,6 +9,7 @@ const timestamp = (name: string) => integer(name, { mode: "timestamp_ms" });
 
 export const playlists = sqliteTable("playlists", {
   id: text("id").primaryKey(), // YouTube Playlist ID
+  name: text("name").notNull(), // YouTube playlist title, fetched on add/sync
   createdAt: timestamp("created_at")
     .$default(() => new Date())
     .notNull(),

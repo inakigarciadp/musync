@@ -112,6 +112,44 @@ export class YouTubeService extends Effect.Service<YouTubeService>()(
           ),
       );
 
+      /**
+       * Fetch a single playlist's metadata by ID.
+       * Works for any public/unlisted playlist (not restricted to mine=true).
+       */
+      const getPlaylist = Effect.fn("YouTubeService.getPlaylist")(
+        function* (playlistId: PlaylistId) {
+          const request = HttpClientRequest.get("/playlists").pipe(
+            HttpClientRequest.setUrlParams({
+              part: "snippet,contentDetails,id",
+              id: playlistId,
+            }),
+          );
+          const response = yield* http.execute(request);
+
+          const result =
+            yield* HttpClientResponse.schemaBodyJson(PlaylistListResponse)(
+              response,
+            );
+
+          const playlist = result.items[0];
+          if (!playlist) {
+            return yield* ResourceNotFoundError.make({
+              resource: "Playlist",
+              message: `Playlist not found: ${playlistId}`,
+            });
+          }
+
+          return playlist;
+        },
+        (effect) =>
+          effect.pipe(
+            Effect.catchTags({
+              ResponseError: handleHttpError,
+              RequestError: handleHttpError,
+            }),
+          ),
+      );
+
       const listAllPlaylists = Effect.fn("YouTubeService.listAllPlaylists")(
         function* () {
           const allItems = [];
@@ -200,6 +238,7 @@ export class YouTubeService extends Effect.Service<YouTubeService>()(
       );
 
       return {
+        getPlaylist,
         listPlaylists,
         listAllPlaylists,
         listAllPlaylistItems,

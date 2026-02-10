@@ -9,6 +9,7 @@ type Playlist = InferSelectModel<typeof playlists>;
 // 2. Effect Schema
 const _DbPlaylistSchema = Schema.Struct({
   id: Schema.String,
+  name: Schema.String,
   createdAt: Schema.Date,
 });
 
