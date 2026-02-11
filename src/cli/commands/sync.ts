@@ -1,6 +1,10 @@
 import { Command } from "@effect/cli";
 import { Effect } from "effect";
-import { SyncService } from "../../services/sync";
+import { DownloadUrlResolutionService } from "../../services/download-url-resolution";
+import { M3UService } from "../../services/m3u8";
+import { MetadataExtractionService } from "../../services/metadata-extraction";
+import { PlaylistSyncService } from "../../services/playlist-sync";
+import { SongDownloadService } from "../../services/song-download";
 
 export const syncCommand = Command.make(
   "sync",
@@ -18,25 +22,23 @@ export const syncCommand = Command.make(
     // 5. Download all new tracks using the download URLs and store them in local storage.
     // 6. Generate the playlist files (M3U8) for the local media player to use.
 
-    const syncService = yield* SyncService;
-
     // Step 1: Sync playlists and tracks to DB
-    yield* syncService.syncPlaylistsToDb();
+    yield* PlaylistSyncService.syncToDb();
 
     // Step 2: Extract song metadata with AI
-    yield* syncService.extractSongsWithAi();
+    yield* MetadataExtractionService.extractAll();
 
     // Step 3: Handle manual review for song extraction
-    yield* syncService.handleManualReview();
+    yield* MetadataExtractionService.handleManualReview();
 
     // Step 4: Find download URLs via lucida.to (prompts user inline if AI unsure)
-    yield* syncService.findDownloadUrls();
+    yield* DownloadUrlResolutionService.resolveAll();
 
     // Step 5: Download songs
-    yield* syncService.downloadSongs();
+    yield* SongDownloadService.downloadAll();
 
     // Step 6: Generate M3U8 playlist files
-    yield* syncService.generatePlaylists();
+    yield* M3UService.generatePlaylists();
 
     yield* Effect.logInfo("Sync process completed");
   }),

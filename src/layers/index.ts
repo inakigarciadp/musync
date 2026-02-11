@@ -9,11 +9,14 @@ import { CloudflareCredentialsService } from "../services/cloudflare-credentials
 import { ConfigService } from "../services/config";
 import { DatabaseService } from "../services/database";
 import { DownloadUrlMatchingService } from "../services/download-url-matching";
+import { DownloadUrlResolutionService } from "../services/download-url-resolution";
 import { LucidaService } from "../services/lucida";
 import { M3UService } from "../services/m3u8";
+import { MetadataExtractionService } from "../services/metadata-extraction";
 import { PathsService } from "../services/paths";
+import { PlaylistSyncService } from "../services/playlist-sync";
+import { SongDownloadService } from "../services/song-download";
 import { SongExtractionService } from "../services/song-extraction";
-import { SyncService } from "../services/sync";
 import { UserConfigService } from "../services/user-config";
 import { YouTubeService } from "../services/youtube";
 
@@ -105,15 +108,28 @@ const m3uServiceLayer = M3UService.Default.pipe(
   Layer.provide(userConfigServiceLayer),
 );
 
-// SyncService depends on multiple services
-const syncServiceLayer = SyncService.Default.pipe(
+// Sync pipeline services - each step is its own service
+const playlistSyncServiceLayer = PlaylistSyncService.Default.pipe(
   Layer.provide(databaseServiceLayer),
   Layer.provide(youtubeServiceLayer),
+);
+
+const metadataExtractionServiceLayer = MetadataExtractionService.Default.pipe(
+  Layer.provide(databaseServiceLayer),
   Layer.provide(extractionServiceLayer),
+);
+
+const downloadUrlResolutionServiceLayer =
+  DownloadUrlResolutionService.Default.pipe(
+    Layer.provide(databaseServiceLayer),
+    Layer.provide(lucidaServiceLayer),
+    Layer.provide(downloadUrlMatchingServiceLayer),
+  );
+
+const songDownloadServiceLayer = SongDownloadService.Default.pipe(
+  Layer.provide(databaseServiceLayer),
   Layer.provide(lucidaServiceLayer),
-  Layer.provide(downloadUrlMatchingServiceLayer),
   Layer.provide(userConfigServiceLayer),
-  Layer.provide(m3uServiceLayer),
 );
 
 // Infrastructure layers - provided at the bottom to close all leaked dependencies
@@ -129,7 +145,10 @@ export const AppLayer = Layer.mergeAll(
   authServiceLayer,
   youtubeServiceLayer,
   databaseServiceLayer,
-  syncServiceLayer,
+  playlistSyncServiceLayer,
+  metadataExtractionServiceLayer,
+  downloadUrlResolutionServiceLayer,
+  songDownloadServiceLayer,
   cloudflareCredentialsServiceLayer,
   userConfigServiceLayer,
   pathsServiceLayer,
