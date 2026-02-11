@@ -4,7 +4,7 @@ import { Effect } from "effect";
 import { FileSystemError } from "../domain/errors/auth";
 import { DuplicatePlaylistNameError } from "../domain/errors/sync";
 import { DatabaseService } from "./database";
-import { getFlacDuration } from "./flac-duration";
+import { getFlacDuration } from "../utils/flac-duration";
 import { UserConfigService } from "./user-config";
 
 /**
