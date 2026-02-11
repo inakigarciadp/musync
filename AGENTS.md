@@ -85,30 +85,7 @@ src/
 │   └── index.ts
 ├── domain/
 │   ├── errors/
-│   │   ├── index.ts                 # AppError union type (all error types)
-│   │   ├── auth.ts
-│   │   ├── config.ts
-│   │   ├── database.ts
-│   │   ├── download-url-matching.ts
-│   │   ├── interactive.ts
-│   │   ├── lucida.ts
-│   │   ├── song-extraction.ts
-│   │   ├── sync.ts
-│   │   └── youtube.ts
 │   └── models/
-│       ├── auth.ts
-│       ├── cloudflare.ts
-│       ├── db/
-│       │   ├── playlist.ts
-│       │   └── utils.ts
-│       ├── download-url-match.ts
-│       ├── format.ts
-│       ├── lucida.ts
-│       ├── song.ts
-│       ├── user-config.ts
-│       └── youtube/
-│           ├── playlist.ts
-│           └── tracks.ts
 ├── http/
 │   └── layers/
 │       ├── lucida-http.ts           # For Lucida download service
@@ -132,18 +109,5 @@ src/
 │       ├── table.ts
 │       └── utils.ts
 ├─── services/
-│   ├── auth.ts                      # OAuth token management
-│   ├── cloudflare-credentials.ts    # Cloudflare credentials management
-│   ├── config.ts                    # App configuration
-│   ├── database.ts                  # SQLite operations
-│   ├── download-url-matching.ts     # Download URL matching logic
-│   ├── lucida.ts                    # Lucida download service
-│   ├── m3u8.ts                      # Playlist file generation
-│   ├── paths.ts                     # File path management
-│   ├── song-extraction.ts           # Song metadata extraction
-│   ├── sync.ts                      # Playlist sync orchestration
-│   ├── user-config.ts               # User preferences
-│   └── youtube.ts                   # YouTube API wrapper
 └── utils/
-    └── flac-duration.ts             # FLAC duration extraction
 ```
