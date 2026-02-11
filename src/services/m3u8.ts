@@ -3,8 +3,8 @@ import { and, asc, eq, isNotNull } from "drizzle-orm";
 import { Effect } from "effect";
 import { FileSystemError } from "../domain/errors/auth";
 import { DuplicatePlaylistNameError } from "../domain/errors/sync";
-import { DatabaseService } from "./database";
 import { getFlacDuration } from "../utils/flac-duration";
+import { DatabaseService } from "./database";
 import { UserConfigService } from "./user-config";
 
 /**
